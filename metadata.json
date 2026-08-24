@@ -1,0 +1,12 @@
+{
+  "name": "ACT.ai - Anonymous Crime Reporting",
+  "description": "A compassionate, hyper-simplified rural safety assistant designed to help citizens report crimes anonymously using voice-first controls, visual categories, and AI-powered report analysis.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation",
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
