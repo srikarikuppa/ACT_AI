@@ -10,8 +10,11 @@ import { Step2Location } from './components/steps/Step2Location';
 import { Step3Proof } from './components/steps/Step3Proof';
 import { Step4AICheck } from './components/steps/Step4AICheck';
 import { Step5SendConfirm } from './components/steps/Step5SendConfirm';
+import { LandingPage } from './components/LandingPage';
+import { PoliceDashboard } from './components/PoliceDashboard';
 
 export default function App() {
+  const [currentView, setCurrentView] = useState<'landing' | 'citizen' | 'police'>('landing');
   const [language, setLanguage] = useState<SupportedLanguage>('en');
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [isTrackerModalOpen, setIsTrackerModalOpen] = useState(false);
@@ -85,7 +88,7 @@ export default function App() {
       submittedAt: timestamp,
       category: reportState.incidentCategory ? reportState.incidentCategory.toUpperCase() : 'General Safety',
       location: `${reportState.location.village}, ${reportState.location.district}`,
-      status: 'Received',
+      status: 'Submitted',
       urgency: reportState.analysis?.urgencyBadge || 'Yellow - Medium',
       summary: reportState.analysis?.summaryEnglish || reportState.transcript || 'Anonymous incident reported.',
       targetHelpline: reportState.analysis?.targetHelpline || '112 Emergency SOS',
@@ -122,6 +125,14 @@ export default function App() {
       submittedAt: null,
     });
   };
+
+  if (currentView === 'landing') {
+    return <LandingPage onSelectPortal={(portal) => setCurrentView(portal)} />;
+  }
+
+  if (currentView === 'police') {
+    return <PoliceDashboard onBack={() => setCurrentView('landing')} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#0D1117] text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">

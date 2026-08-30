@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Search, ShieldCheck, Clock, MapPin, AlertTriangle, Building2, Volume2 } from 'lucide-react';
+import { X, Search, ShieldCheck, Clock, MapPin, AlertTriangle, Building2, Volume2, CheckCircle2, Circle } from 'lucide-react';
 import { SupportedLanguage, SavedReportRecord } from '../types';
 import { TRANSLATIONS } from '../utils/translations';
 import { speakText } from '../utils/speechUtils';
@@ -63,9 +63,20 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
 
   const handleSpeakCaseDetails = (rec: SavedReportRecord) => {
     speakText(
-      `${t.yourCaseCode} ${rec.caseCode}. ${t.statusLabel} ${rec.status}. ${t.categoryLabel}: ${rec.category}. ${t.locationLabel}: ${rec.location}. ${t.urgencyLabel}: ${rec.urgency}. ${rec.summary}`,
+      `${t.yourCaseCode} ${rec.caseCode}. Status: ${rec.status}. ${t.categoryLabel}: ${rec.category}. ${t.locationLabel}: ${rec.location}. ${t.urgencyLabel}: ${rec.urgency}. ${rec.summary}`,
       language
     );
+  };
+
+  const TRACKING_STEPS = [
+    { id: 'Submitted', label: 'Submitted', desc: 'Your report has been securely received.' },
+    { id: 'Under Review', label: 'Under Review', desc: 'Authorities are currently reviewing the details.' },
+    { id: 'Action Taken', label: 'Action Taken', desc: 'Police have dispatched units or taken action.' },
+    { id: 'Resolved', label: 'Resolved', desc: 'The case has been successfully closed.' }
+  ];
+
+  const getStepIndex = (status: string) => {
+    return TRACKING_STEPS.findIndex(s => s.id === status);
   };
 
   return (
@@ -135,11 +146,40 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
                     </button>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs text-slate-400 block">{t.statusLabel}</span>
-                  <span className="inline-block bg-blue-600/20 text-blue-300 text-xs font-bold px-3 py-1 rounded-full border border-blue-500/30">
-                    {searchedRecord.status}
-                  </span>
+              </div>
+
+              {/* Amazon-Style Vertical Tracker */}
+              <div className="bg-[#161B22] border border-[#21262D] rounded-xl p-4 my-4">
+                <h3 className="text-sm font-bold text-white mb-4">Live Tracking Status</h3>
+                <div className="space-y-6 relative pl-3">
+                  {/* Vertical Line */}
+                  <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-[#30363D]" />
+                  
+                  {TRACKING_STEPS.map((step, index) => {
+                    const currentIndex = getStepIndex(searchedRecord.status);
+                    const isCompleted = index <= currentIndex;
+                    const isCurrent = index === currentIndex;
+                    
+                    return (
+                      <div key={step.id} className="relative flex items-start gap-4">
+                        <div className="relative z-10 bg-[#161B22] py-1">
+                          {isCompleted ? (
+                            <CheckCircle2 className={`w-5 h-5 ${isCurrent ? 'text-blue-500 animate-pulse' : 'text-blue-500'}`} />
+                          ) : (
+                            <Circle className="w-5 h-5 text-[#30363D]" />
+                          )}
+                        </div>
+                        <div className="flex-1 pt-1">
+                          <p className={`text-sm font-bold ${isCompleted ? 'text-white' : 'text-slate-500'}`}>
+                            {step.label}
+                          </p>
+                          <p className={`text-xs mt-0.5 ${isCurrent ? 'text-blue-400' : 'text-slate-500'}`}>
+                            {step.desc}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

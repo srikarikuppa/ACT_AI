@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
+import https from 'https';
 import { GoogleGenAI, Type } from '@google/genai';
 
 dotenv.config();
@@ -179,6 +180,23 @@ Return JSON in this schema:
 // Health Check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'ACT.ai Rural Safety Backend' });
+});
+
+// Proxy for TTS to avoid browser CORS/blocking issues
+app.get('/api/tts', (req, res) => {
+  const text = (req.query.text as string) || '';
+  const lang = (req.query.lang as string) || 'en';
+  if (!text) return res.status(400).send('No text');
+
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${lang}&client=tw-ob`;
+  
+  https.get(url, (response) => {
+    res.setHeader('Content-Type', 'audio/mpeg');
+    response.pipe(res);
+  }).on('error', (err) => {
+    console.error('TTS Proxy Error:', err);
+    res.status(500).send('Error generating TTS');
+  });
 });
 
 // Setup Vite development middleware or static production serving

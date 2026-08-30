@@ -68,12 +68,15 @@ export interface ReportState {
   submittedAt: string | null;
 }
 
+export type TrackingStatus = 'Submitted' | 'Under Review' | 'Action Taken' | 'Resolved';
+
 export interface SavedReportRecord {
   caseCode: string;
   submittedAt: string;
+  updatedAt?: string;
   category: string;
   location: string;
-  status: 'Received' | 'In Review' | 'Dispatched to Local Panchayat' | 'Action Taken';
+  status: TrackingStatus;
   urgency: string;
   summary: string;
   targetHelpline: string;

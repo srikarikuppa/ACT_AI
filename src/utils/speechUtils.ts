@@ -275,7 +275,9 @@ export const speakText = (
       en: 'en',
     };
     const langCode = langCodeMap[lang] || 'en';
-    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=${langCode}&client=tw-ob`;
+    const audioUrl = `/api/tts?text=${encodeURIComponent(chunk)}&lang=${langCode}`;
+    
+    console.log('Attempting to play TTS via Proxy:', audioUrl);
 
     const audio = new Audio(audioUrl);
     currentAudio = audio;
@@ -291,7 +293,7 @@ export const speakText = (
     };
 
     audio.onerror = (e) => {
-      console.warn('Google TTS audio load error, attempting WebSpeech fallback:', e);
+      console.error('Google TTS audio load error (URL failed):', audioUrl, e);
       if (mySession === speakSessionId && !isCancelled) {
         currentAudio = null;
         currentAudioCancel = null;
@@ -303,7 +305,7 @@ export const speakText = (
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
-        console.warn('Google TTS audio play rejected, attempting WebSpeech fallback:', err);
+        console.error('Google TTS audio play rejected (Browser autoplay blocked?):', err);
         if (mySession === speakSessionId && !isCancelled) {
           currentAudio = null;
           currentAudioCancel = null;

@@ -126,7 +126,7 @@ export const Step1Speak: React.FC<Step1SpeakProps> = ({
   };
 
   const handleSpeakCategory = (catTitle: string) => {
-    speakText(`Category: ${catTitle}`, language);
+    speakText(catTitle, language);
   };
 
   const handleSpeakInstructions = () => {
