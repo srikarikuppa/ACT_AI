@@ -9,6 +9,7 @@ interface CaseTrackerModalProps {
   onClose: () => void;
   language: SupportedLanguage;
   savedReports: SavedReportRecord[];
+  onUpdateReport: (report: SavedReportRecord) => void;
 }
 
 export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
@@ -16,10 +17,12 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
   onClose,
   language,
   savedReports,
+  onUpdateReport,
 }) => {
   const [searchInput, setSearchInput] = useState('');
   const [searchedRecord, setSearchedRecord] = useState<SavedReportRecord | null>(null);
   const [searchError, setSearchError] = useState('');
+  const [chatMessage, setChatMessage] = useState('');
 
   if (!isOpen) return null;
 
@@ -66,6 +69,26 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
       `${t.yourCaseCode} ${rec.caseCode}. Status: ${rec.status}. ${t.categoryLabel}: ${rec.category}. ${t.locationLabel}: ${rec.location}. ${t.urgencyLabel}: ${rec.urgency}. ${rec.summary}`,
       language
     );
+  };
+
+  const handleSendChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatMessage.trim() || !searchedRecord) return;
+
+    const newMessage = {
+      sender: 'citizen' as const,
+      text: chatMessage.trim(),
+      timestamp: new Date().toLocaleString(),
+    };
+
+    const updatedRecord = {
+      ...searchedRecord,
+      messages: [...(searchedRecord.messages || []), newMessage],
+    };
+
+    setSearchedRecord(updatedRecord);
+    onUpdateReport(updatedRecord);
+    setChatMessage('');
   };
 
   const TRACKING_STEPS = [
@@ -218,6 +241,43 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
                 <div className="flex items-center gap-1 text-blue-400 font-medium">
                   <span>{t.helplineLabel} {searchedRecord.targetHelpline}</span>
                 </div>
+              </div>
+
+              {/* Chat Interface */}
+              <div className="mt-6 border-t border-[#21262D] pt-4">
+                <h3 className="text-sm font-bold text-white mb-4">Direct Message Authority</h3>
+                
+                <div className="bg-[#161B22] border border-[#21262D] rounded-2xl h-48 overflow-y-auto p-4 mb-3 space-y-3">
+                  {(!searchedRecord.messages || searchedRecord.messages.length === 0) ? (
+                    <p className="text-xs text-slate-500 text-center italic mt-16">No messages yet. You can send a secure message to the police here.</p>
+                  ) : (
+                    searchedRecord.messages.map((msg, idx) => (
+                      <div key={idx} className={`flex flex-col ${msg.sender === 'citizen' ? 'items-end' : 'items-start'}`}>
+                        <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${msg.sender === 'citizen' ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-[#30363D] text-slate-200 rounded-bl-sm'}`}>
+                          {msg.text}
+                        </div>
+                        <span className="text-[10px] text-slate-500 mt-1">{msg.timestamp}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <form onSubmit={handleSendChat} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    placeholder="Type your message securely..."
+                    className="flex-1 bg-[#0D1117] border border-[#30363D] focus:border-blue-500 text-white rounded-xl px-4 py-2.5 text-sm outline-none transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!chatMessage.trim()}
+                    className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-colors"
+                  >
+                    Send
+                  </button>
+                </form>
               </div>
             </div>
           )}

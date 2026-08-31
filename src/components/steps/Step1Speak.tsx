@@ -83,7 +83,7 @@ export const Step1Speak: React.FC<Step1SpeakProps> = ({
     };
   }, []);
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     setSpeechError('');
 
     if (isRecording) {
@@ -99,28 +99,44 @@ export const Step1Speak: React.FC<Step1SpeakProps> = ({
       return;
     }
 
-    const rec = createSpeechRecognition(
-      language,
-      (text, isFinal) => {
-        onTranscriptChange(text);
-      },
-      (err) => {
-        setSpeechError(err);
-        setIsRecording(false);
-      },
-      () => {
-        setIsRecording(false);
-      }
-    );
+    try {
+      // Explicitly ask for microphone permission first
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Stop the stream immediately, we just wanted to force the permission prompt
+      stream.getTracks().forEach(track => track.stop());
 
-    if (rec) {
-      recognitionRef.current = rec;
-      try {
-        rec.start();
-        setIsRecording(true);
-      } catch (err) {
-        console.error('Failed to start speech recognition:', err);
-        setIsRecording(false);
+      const rec = createSpeechRecognition(
+        language,
+        (text, isFinal) => {
+          onTranscriptChange(text);
+        },
+        (err) => {
+          setSpeechError(err);
+          setIsRecording(false);
+        },
+        () => {
+          setIsRecording(false);
+        }
+      );
+
+      if (rec) {
+        recognitionRef.current = rec;
+        try {
+          rec.start();
+          setIsRecording(true);
+        } catch (err) {
+          console.error('Failed to start speech recognition:', err);
+          setIsRecording(false);
+        }
+      }
+    } catch (err: any) {
+      console.error('Microphone access denied:', err);
+      if (err.name === 'NotAllowedError') {
+        setSpeechError('Microphone access was denied. Please allow it in your browser settings (click the padlock icon in the URL bar).');
+      } else if (err.name === 'NotFoundError') {
+        setSpeechError('No microphone found on this device! Please type your report instead.');
+      } else {
+        setSpeechError('Failed to access microphone: ' + err.message);
       }
     }
   };

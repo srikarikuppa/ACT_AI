@@ -9,6 +9,8 @@ interface PoliceDashboardProps {
 export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
   const [reports, setReports] = useState<SavedReportRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeChatCaseCode, setActiveChatCaseCode] = useState<string | null>(null);
+  const [chatMessage, setChatMessage] = useState('');
 
   useEffect(() => {
     loadReports();
@@ -61,11 +63,43 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
     }
   };
 
+  const getUrgencyValue = (urgency: string) => {
+    if (urgency.includes('Red')) return 3;
+    if (urgency.includes('Orange')) return 2;
+    return 1;
+  };
+
   const filteredReports = reports.filter(r => 
     r.caseCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.location.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ).sort((a, b) => getUrgencyValue(b.urgency) - getUrgencyValue(a.urgency));
+
+  const handleSendChat = (e: React.FormEvent, caseCode: string) => {
+    e.preventDefault();
+    if (!chatMessage.trim()) return;
+
+    const updatedReports = reports.map(report => {
+      if (report.caseCode === caseCode) {
+        return {
+          ...report,
+          messages: [
+            ...(report.messages || []),
+            { sender: 'police' as const, text: chatMessage.trim(), timestamp: new Date().toLocaleString() }
+          ]
+        };
+      }
+      return report;
+    });
+
+    setReports(updatedReports);
+    try {
+      localStorage.setItem('act_ai_saved_reports', JSON.stringify(updatedReports));
+    } catch (e) {
+      console.error('Failed to save chat', e);
+    }
+    setChatMessage('');
+  };
 
   return (
     <div className="min-h-screen bg-[#0D1117] text-slate-100 flex flex-col font-sans">
@@ -170,22 +204,66 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
                   </div>
                 </div>
 
-                {/* Status Update Action */}
-                <div className="border-t border-[#30363D] pt-4 mt-auto">
+                {/* Status Update & Chat Actions */}
+                <div className="border-t border-[#30363D] pt-4 mt-auto space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400 font-medium">Update Status</span>
-                    <select
-                      value={report.status}
-                      onChange={(e) => handleUpdateStatus(report.caseCode, e.target.value as TrackingStatus)}
-                      className={`appearance-none outline-none text-sm font-bold px-4 py-2 pr-8 rounded-xl border cursor-pointer transition-colors ${getStatusColor(report.status)}`}
-                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.2em' }}
+                    <button
+                      onClick={() => setActiveChatCaseCode(activeChatCaseCode === report.caseCode ? null : report.caseCode)}
+                      className="text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors"
                     >
-                      <option value="Submitted" className="bg-[#161B22] text-slate-300">Submitted</option>
-                      <option value="Under Review" className="bg-[#161B22] text-yellow-400">Under Review</option>
-                      <option value="Action Taken" className="bg-[#161B22] text-orange-400">Action Taken</option>
-                      <option value="Resolved" className="bg-[#161B22] text-green-400">Resolved</option>
-                    </select>
+                      {activeChatCaseCode === report.caseCode ? 'Close Chat' : 'Chat with Informant'}
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-slate-400 font-medium hidden sm:inline">Status:</span>
+                      <select
+                        value={report.status}
+                        onChange={(e) => handleUpdateStatus(report.caseCode, e.target.value as TrackingStatus)}
+                        className={`appearance-none outline-none text-sm font-bold px-3 py-1.5 pr-8 rounded-lg border cursor-pointer transition-colors ${getStatusColor(report.status)}`}
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.2em' }}
+                      >
+                        <option value="Submitted" className="bg-[#161B22] text-slate-300">Submitted</option>
+                        <option value="Under Review" className="bg-[#161B22] text-yellow-400">Under Review</option>
+                        <option value="Action Taken" className="bg-[#161B22] text-orange-400">Action Taken</option>
+                        <option value="Resolved" className="bg-[#161B22] text-green-400">Resolved</option>
+                      </select>
+                    </div>
                   </div>
+
+                  {activeChatCaseCode === report.caseCode && (
+                    <div className="bg-[#0D1117] border border-[#21262D] rounded-xl p-3 animate-fade-in">
+                      <div className="h-40 overflow-y-auto mb-3 space-y-2 pr-1">
+                        {(!report.messages || report.messages.length === 0) ? (
+                          <p className="text-xs text-slate-500 text-center italic mt-12">No messages. You can reach out to the informant here.</p>
+                        ) : (
+                          report.messages.map((msg, idx) => (
+                            <div key={idx} className={`flex flex-col ${msg.sender === 'police' ? 'items-end' : 'items-start'}`}>
+                              <div className={`max-w-[85%] rounded-xl px-3 py-1.5 text-sm ${msg.sender === 'police' ? 'bg-orange-600/20 text-orange-400 border border-orange-500/30 rounded-br-sm' : 'bg-[#21262D] text-slate-300 border border-[#30363D] rounded-bl-sm'}`}>
+                                {msg.text}
+                              </div>
+                              <span className="text-[9px] text-slate-500 mt-0.5">{msg.timestamp}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <form onSubmit={(e) => handleSendChat(e, report.caseCode)} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={chatMessage}
+                          onChange={(e) => setChatMessage(e.target.value)}
+                          placeholder="Reply to informant..."
+                          className="flex-1 bg-[#161B22] border border-[#30363D] focus:border-orange-500/50 text-white rounded-lg px-3 py-2 text-sm outline-none transition-colors"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!chatMessage.trim()}
+                          className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white px-3 py-2 rounded-lg font-bold text-sm transition-colors"
+                        >
+                          Send
+                        </button>
+                      </form>
+                    </div>
+                  )}
+
                   {report.updatedAt && (
                     <p className="text-[10px] text-slate-500 text-right mt-1.5">Last updated: {report.updatedAt}</p>
                   )}

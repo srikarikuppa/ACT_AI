@@ -104,6 +104,16 @@ export default function App() {
     }
   };
 
+  const handleUpdateReport = (updatedRecord: SavedReportRecord) => {
+    const updatedList = savedReports.map(r => r.caseCode === updatedRecord.caseCode ? updatedRecord : r);
+    setSavedReports(updatedList);
+    try {
+      localStorage.setItem('act_ai_saved_reports', JSON.stringify(updatedList));
+    } catch (e) {
+      console.warn('LocalStorage update error:', e);
+    }
+  };
+
   const handleResetReport = () => {
     setReportState({
       step: 1,
@@ -232,6 +242,7 @@ export default function App() {
         onClose={() => setIsTrackerModalOpen(false)}
         language={language}
         savedReports={savedReports}
+        onUpdateReport={handleUpdateReport}
       />
     </div>
   );

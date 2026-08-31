@@ -70,6 +70,12 @@ export interface ReportState {
 
 export type TrackingStatus = 'Submitted' | 'Under Review' | 'Action Taken' | 'Resolved';
 
+export interface ChatMessage {
+  sender: 'citizen' | 'police';
+  text: string;
+  timestamp: string;
+}
+
 export interface SavedReportRecord {
   caseCode: string;
   submittedAt: string;
@@ -80,4 +86,5 @@ export interface SavedReportRecord {
   urgency: string;
   summary: string;
   targetHelpline: string;
+  messages?: ChatMessage[];
 }
