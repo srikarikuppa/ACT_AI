@@ -3,9 +3,10 @@ import { ShieldAlert, ShieldCheck, Lock, ArrowRight } from 'lucide-react';
 
 interface LandingPageProps {
   onSelectPortal: (portal: 'citizen' | 'police') => void;
+  onOpenMap: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onSelectPortal }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onSelectPortal, onOpenMap }) => {
   const [showPinModal, setShowPinModal] = useState(false);
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
@@ -41,7 +42,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSelectPortal }) => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
           {/* Citizen Card */}
           <button
             onClick={() => onSelectPortal('citizen')}
@@ -73,6 +74,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSelectPortal }) => {
             <h2 className="text-2xl font-black text-white mb-3 text-center">Authority Dashboard</h2>
             <p className="text-slate-400 text-center font-medium leading-relaxed">
               Secure police portal to review submitted incidents, dispatch help, and update case tracking statuses.
+            </p>
+          </button>
+
+          {/* Safety Map Card */}
+          <button
+            onClick={onOpenMap}
+            className="group relative flex flex-col items-center p-10 bg-[#161B22] border border-[#30363D] hover:border-purple-500/50 hover:bg-[#1C2128] rounded-3xl transition-all duration-300 shadow-2xl hover:shadow-[0_0_40px_rgba(168,85,247,0.15)] text-left w-full overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+            <div className="w-20 h-20 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 border border-purple-500/20">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-map"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>
+            </div>
+
+            <h2 className="text-2xl font-black text-white mb-3 text-center">Safety Map</h2>
+            <p className="text-slate-400 text-center font-medium leading-relaxed">
+              View real-time safe zones and historical crime heatmaps to plan your travel safely.
             </p>
           </button>
         </div>

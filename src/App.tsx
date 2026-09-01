@@ -12,12 +12,31 @@ import { Step4AICheck } from './components/steps/Step4AICheck';
 import { Step5SendConfirm } from './components/steps/Step5SendConfirm';
 import { LandingPage } from './components/LandingPage';
 import { PoliceDashboard } from './components/PoliceDashboard';
+import { SafetyMapModal } from './components/SafetyMapModal';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'landing' | 'citizen' | 'police'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'citizen' | 'police'>(() => {
+    const hash = window.location.hash.replace('#', '');
+    return (hash === 'citizen' || hash === 'police') ? hash : 'landing';
+  });
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      setCurrentView((hash === 'citizen' || hash === 'police') ? hash : 'landing');
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const navigateTo = (view: 'landing' | 'citizen' | 'police') => {
+    window.location.hash = view === 'landing' ? '' : view;
+    setCurrentView(view);
+  };
   const [language, setLanguage] = useState<SupportedLanguage>('en');
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [isTrackerModalOpen, setIsTrackerModalOpen] = useState(false);
+  const [isSafetyMapOpen, setIsSafetyMapOpen] = useState(false);
   const [savedReports, setSavedReports] = useState<SavedReportRecord[]>([]);
 
   // Generate random case code e.g. #ACT-4029
@@ -137,11 +156,16 @@ export default function App() {
   };
 
   if (currentView === 'landing') {
-    return <LandingPage onSelectPortal={(portal) => setCurrentView(portal)} />;
+    return (
+      <>
+        <LandingPage onSelectPortal={(portal) => navigateTo(portal)} onOpenMap={() => setIsSafetyMapOpen(true)} />
+        <SafetyMapModal isOpen={isSafetyMapOpen} onClose={() => setIsSafetyMapOpen(false)} language={language} />
+      </>
+    );
   }
 
   if (currentView === 'police') {
-    return <PoliceDashboard onBack={() => setCurrentView('landing')} />;
+    return <PoliceDashboard onBack={() => navigateTo('landing')} />;
   }
 
   return (
@@ -243,6 +267,13 @@ export default function App() {
         language={language}
         savedReports={savedReports}
         onUpdateReport={handleUpdateReport}
+      />
+
+      {/* Safety Map Modal */}
+      <SafetyMapModal
+        isOpen={isSafetyMapOpen}
+        onClose={() => setIsSafetyMapOpen(false)}
+        language={language}
       />
     </div>
   );
