@@ -21,7 +21,7 @@ export interface TranslationSet {
   dismiss: string;
   ruralSafetyNetwork: string;
   footerDesc: string;
-  
+
   // Step headers
   step1Title: string;
   step1Desc: string;
@@ -217,7 +217,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSet> = {
       other: 'अन्य शिकायत',
     },
     audioPrompts: {
-      pageGuide1: 'नमस्ते! शिकायत दर्ज करने के लिए लाल माइक बटन दबाएं और अपनी समस्या बोलें। आप नीचे दिए गए चित्रों से भी चुन सकते हैं।',
+      pageGuide1: 'नमस्ते! शिकायत दर्ज करने के लिए नीले माइक बटन दबाएं और अपनी समस्या बोलें। आप नीचे दिए गए चित्रों से भी चुन सकते हैं।',
       pageGuide2: 'यह लोकेशन चरण है। नीले बटन से अपनी लोकेशन खोजें या नीचे अपने राज्य और गाँव का नाम चुनें।',
       pageGuide3: 'यदि आपके पास घटना की कोई फोटो, वीडियो या आवाज़ की रिकॉर्डिंग है तो यहाँ जोड़ें। यह अनिवार्य नहीं है।',
       pageGuide4: 'एक्ट एआई आपकी रिपोर्ट की जांच कर रहा है। यहाँ आपको सहायता का प्रकार और हेल्पलाइन नंबर दिखाई देगा।',
@@ -366,7 +366,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSet> = {
       other: 'ఇతర ఫిర్యాదు',
     },
     audioPrompts: {
-      pageGuide1: 'నమస్కారం! ఫిర్యాదు చేయడానికి ఎరుపు రంగు మైక్ బటన్ నొక్కి మీ సమస్య చెప్పండి.',
+      pageGuide1: 'నమస్కారం! ఫిర్యాదు చేయడానికి నీలం రంగు మైక్ బటన్ నొక్కి మీ సమస్య చెప్పండి.',
       pageGuide2: 'మీ స్థానాన్ని ఎంచుకోవడానికి నీలం బటన్ నొక్కండి లేదా జాబితా నుండి మీ గ్రామాన్ని ఎంచుకోండి.',
       pageGuide3: 'మీ వద్ద ఫోటో లేదా రికార్డింగ్ ఉంటే ఇక్కడ జతచేయండి. ఇది తప్పనిసరి కాదు.',
       pageGuide4: 'మీ ఫిర్యాదు విశ్లేషించబడుతోంది. ఇక్కడ మీకు సహాయక హెల్ప్‌లైన్ నంబర్ కనిపిస్తుంది.',
@@ -515,7 +515,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSet> = {
       other: 'இதர புகார்',
     },
     audioPrompts: {
-      pageGuide1: 'வணக்கம்! புகார் செய்ய சிவப்பு மைக் பொத்தானை அழுத்திப் பேசுங்கள்.',
+      pageGuide1: 'வணக்கம்! புகார் செய்ய நீல மைக் பொத்தானை அழுத்திப் பேசுங்கள்.',
       pageGuide2: 'உங்கள் இருப்பிடத்தைக் கண்டறிய நீல பொத்தானை அழுத்தவும்.',
       pageGuide3: 'புகைப்படம் அல்லது வீடியோ இருந்தால் இங்கு சேர்க்கவும்.',
       pageGuide4: 'உங்கள் புகார் ஆய்வு செய்யப்படுகிறது.',
@@ -664,7 +664,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSet> = {
       other: 'इतर तक्रार',
     },
     audioPrompts: {
-      pageGuide1: 'नमस्कार! तक्रार नोंदवण्यासाठी लाल माईक बटण दाबा आणि आपली समस्या सांगा.',
+      pageGuide1: 'नमस्कार! तक्रार नोंदवण्यासाठी निळे माईक बटण दाबा आणि आपली समस्या सांगा.',
       pageGuide2: 'तुमचे ठिकाण शोधण्यासाठी निळे बटण दाबा किंवा यादीतून गाव निवडा.',
       pageGuide3: 'फोटो किंवा रेकॉर्डिंग असल्यास येथे जोडा.',
       pageGuide4: 'तुमच्या तक्रारीची तपासणी सुरू आहे.',
@@ -813,7 +813,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSet> = {
       other: 'অন্যান্য অভিযোগ',
     },
     audioPrompts: {
-      pageGuide1: 'নমস্কার! অভিযোগ জানাতে লাল মাইক বোতামটি চাপুন এবং কথা বলুন।',
+      pageGuide1: 'নমস্কার! অভিযোগ জানাতে নীল মাইক বোতামটি চাপুন এবং কথা বলুন।',
       pageGuide2: 'আপনার অবস্থান জানতে নীল বোতাম চাপুন বা তালিকা থেকে গ্রাম বেছে নিন।',
       pageGuide3: 'কোনো ছবি বা ভিডিও থাকলে এখানে যোগ করুন।',
       pageGuide4: 'আপনার রিপোর্ট বিশ্লেষণ করা হচ্ছে।',
@@ -962,7 +962,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSet> = {
       other: 'Other Incident',
     },
     audioPrompts: {
-      pageGuide1: 'Welcome to ACT.ai. Press the big red microphone to speak your report in your language. You can also select a category icon below.',
+      pageGuide1: 'Welcome to ACT.ai. Press the big blue microphone to speak your report in your language. You can also select a category icon below.',
       pageGuide2: 'Location step: Tap the blue button to automatically detect your location, or select your State, District, and Village from the dropdowns.',
       pageGuide3: 'Proof step: Optionally attach a photo, video, or voice recording. Your identity remains completely private.',
       pageGuide4: 'ACT.ai is analyzing your report details. Review the urgency and helpline details.',

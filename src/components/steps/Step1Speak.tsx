@@ -194,18 +194,17 @@ export const Step1Speak: React.FC<Step1SpeakProps> = ({
             </>
           ) : (
             <>
-              <div className="absolute w-64 h-64 border-2 border-blue-500/20 rounded-full pointer-events-none" />
-              <div className="absolute w-52 h-52 border-2 border-blue-500/40 rounded-full pointer-events-none" />
+              <div className="absolute w-64 h-64 border-2 border-red-500/20 rounded-full pointer-events-none" />
+              <div className="absolute w-52 h-52 border-2 border-red-500/40 rounded-full pointer-events-none" />
             </>
           )}
 
           <button
             onClick={toggleRecording}
-            className={`relative z-10 w-40 h-40 rounded-full flex flex-col items-center justify-center text-white font-black shadow-2xl transition-all duration-300 border-4 transform active:scale-95 ${
-              isRecording
+            className={`relative z-10 w-40 h-40 rounded-full flex flex-col items-center justify-center text-white font-black shadow-2xl transition-all duration-300 border-4 transform active:scale-95 ${isRecording
                 ? 'bg-gradient-to-br from-red-600 via-rose-600 to-red-800 border-red-300 shadow-red-900/60 ring-8 ring-red-500/30'
                 : 'bg-blue-600 hover:bg-blue-500 border-blue-400 shadow-blue-500/50 hover:scale-105'
-            }`}
+              }`}
           >
             {isRecording ? (
               <>
@@ -289,11 +288,10 @@ export const Step1Speak: React.FC<Step1SpeakProps> = ({
               <div
                 key={cat.id}
                 onClick={() => onSelectCategory(cat.id)}
-                className={`cursor-pointer rounded-3xl p-5 flex flex-col items-center justify-center text-center transition-all border-2 min-h-[110px] relative shadow-lg ${
-                  isSelected
+                className={`cursor-pointer rounded-3xl p-5 flex flex-col items-center justify-center text-center transition-all border-2 min-h-[110px] relative shadow-lg ${isSelected
                     ? 'bg-blue-600/10 border-blue-500 ring-4 ring-blue-500/20'
                     : 'bg-[#161B22] border-gray-800 hover:border-blue-500 hover:bg-[#21262D]'
-                }`}
+                  }`}
               >
                 {/* Speaker Button on each card */}
                 <button
@@ -309,9 +307,8 @@ export const Step1Speak: React.FC<Step1SpeakProps> = ({
 
                 <span className="text-4xl mb-2">{cat.iconName}</span>
                 <span
-                  className={`text-base font-bold leading-tight ${
-                    isSelected ? 'text-blue-400 font-extrabold' : 'text-white'
-                  }`}
+                  className={`text-base font-bold leading-tight ${isSelected ? 'text-blue-400 font-extrabold' : 'text-white'
+                    }`}
                 >
                   {translatedTitle}
                 </span>
@@ -333,11 +330,10 @@ export const Step1Speak: React.FC<Step1SpeakProps> = ({
         <button
           onClick={onNext}
           disabled={!isFormValid}
-          className={`w-full sm:w-auto px-10 py-5 rounded-3xl font-black text-xl transition-all shadow-xl min-h-[64px] flex items-center justify-center gap-3 uppercase tracking-tight ${
-            isFormValid
+          className={`w-full sm:w-auto px-10 py-5 rounded-3xl font-black text-xl transition-all shadow-xl min-h-[64px] flex items-center justify-center gap-3 uppercase tracking-tight ${isFormValid
               ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/30 transform active:scale-95'
               : 'bg-[#21262D] text-gray-500 border border-gray-800 cursor-not-allowed opacity-60'
-          }`}
+            }`}
         >
           <span>{t.next}</span>
           <span className="text-2xl">➔</span>
