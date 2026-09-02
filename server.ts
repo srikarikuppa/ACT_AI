@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
 import https from 'https';
+import { exec } from 'child_process';
 import { GoogleGenAI, Type } from '@google/genai';
 
 dotenv.config();
@@ -217,7 +218,12 @@ async function setupApp() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[ACT.ai] Server running on http://0.0.0.0:${PORT}`);
+    const url = `http://localhost:${PORT}`;
+    console.log(`[ACT.ai] Server running on ${url}`);
+    
+    // Automatically open the browser
+    const startCmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+    exec(`${startCmd} ${url}`);
   });
 }
 
