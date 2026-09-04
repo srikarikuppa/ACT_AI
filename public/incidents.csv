@@ -1,0 +1,7 @@
+id,lat,lng,intensity,activeTimes,description
+i1,25.3200,82.9800,0.8,evening|night,History of muggings
+i2,25.3150,82.9700,0.9,night,Unlit alleyways
+i3,25.3110,82.9750,0.7,evening|night,Suspicious activities reported
+i4,25.3250,82.9650,0.5,afternoon|evening,Pickpocketing in crowded market
+i5,25.3080,82.9850,0.4,morning|afternoon,Traffic hazard / unruly crowds
+i6,25.3220,82.9900,0.6,morning|afternoon|evening|night,Known hotspot

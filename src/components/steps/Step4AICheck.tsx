@@ -70,11 +70,13 @@ export const Step4AICheck: React.FC<Step4AICheckProps> = ({
               language === 'hi'
                 ? 'आपकी रिपोर्ट सुरक्षित और पूरी तरह गुप्त दर्ज कर ली गई है। हमारी टीम तुरंत आपकी सहायता में जुटी है।'
                 : 'Your report has been received in complete confidence. Immediate action and routing is underway.',
-            urgencyScore: reportState.incidentCategory === 'violence' || reportState.incidentCategory === 'women_safety' ? 8 : 5,
+            urgencyScore: reportState.incidentCategory === 'violence' || reportState.incidentCategory === 'women_safety' ? 9 : reportState.incidentCategory === 'theft' ? 6 : 3,
             urgencyBadge:
               reportState.incidentCategory === 'violence' || reportState.incidentCategory === 'women_safety'
                 ? 'Red - High'
-                : 'Yellow - Medium',
+                : reportState.incidentCategory === 'theft' 
+                ? 'Yellow - Medium'
+                : 'Green - Low',
             detectedIssue: reportState.incidentCategory ? reportState.incidentCategory.toUpperCase() : 'General Incident',
             targetHelpline: reportState.incidentCategory === 'women_safety' ? '1091 Women Helpline' : '112 Emergency SOS',
             recommendedRouting: 'Gram Panchayat Sarpanch Safety Desk & Station House Officer',
@@ -89,8 +91,8 @@ export const Step4AICheck: React.FC<Step4AICheckProps> = ({
             rawAuthorityJson: {
               detected_language: language,
               incident_type: reportState.incidentCategory || 'Unspecified',
-              urgency_score: 7,
-              urgency_badge: 'Orange - Urgent',
+              urgency_score: 4,
+              urgency_badge: 'Green - Low',
               summary_english: reportState.transcript || 'Anonymous incident reported.',
               recommended_routing: 'Local Panchayat & Police Desk',
               target_helpline: '112 Emergency',
@@ -202,9 +204,9 @@ export const Step4AICheck: React.FC<Step4AICheckProps> = ({
                   className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl font-black text-sm border ${
                     analysis.urgencyScore >= 8
                       ? 'bg-red-500/20 text-red-400 border-red-500/40'
-                      : analysis.urgencyScore >= 6
-                      ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
-                      : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
+                      : analysis.urgencyScore >= 5
+                      ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
+                      : 'bg-green-500/20 text-green-400 border-green-500/40'
                   }`}
                 >
                   <AlertTriangle className="w-4 h-4" />

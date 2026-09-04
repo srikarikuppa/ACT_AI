@@ -1,9 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Clock, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { MapContainer, TileLayer, Circle, Popup, CircleMarker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MOCK_INCIDENTS, MOCK_SAFE_ZONES, TimeOfDay } from '../data/safetyMapData';
+import Papa from 'papaparse';
 import { SupportedLanguage } from '../types';
+
+export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night';
+
+export interface IncidentRecord {
+  id: string;
+  lat: number;
+  lng: number;
+  intensity: number; // 0.1 to 1.0
+  activeTimes: TimeOfDay[]; // When is this area most dangerous?
+  description: string;
+}
+
+export interface SafeZoneRecord {
+  id: string;
+  lat: number;
+  lng: number;
+  name: string;
+  type: 'police' | 'hospital' | 'shelter' | 'well-lit';
+}
 
 interface SafetyMapModalProps {
   isOpen: boolean;
@@ -13,11 +32,40 @@ interface SafetyMapModalProps {
 
 export const SafetyMapModal: React.FC<SafetyMapModalProps> = ({ isOpen, onClose, language }) => {
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('night');
+  const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
+  const [safeZones, setSafeZones] = useState<SafeZoneRecord[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      Papa.parse('/incidents.csv', {
+        download: true,
+        header: true,
+        dynamicTyping: true,
+        complete: (results) => {
+          const parsed = (results.data as any[]).filter(row => row.lat && row.lng).map(row => ({
+            ...row,
+            activeTimes: row.activeTimes ? row.activeTimes.split('|') : []
+          })) as IncidentRecord[];
+          setIncidents(parsed);
+        }
+      });
+      
+      Papa.parse('/safe_zones.csv', {
+        download: true,
+        header: true,
+        dynamicTyping: true,
+        complete: (results) => {
+          const parsed = (results.data as any[]).filter(row => row.lat && row.lng) as SafeZoneRecord[];
+          setSafeZones(parsed);
+        }
+      });
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   // Filter incidents that are active during the selected time of day
-  const activeIncidents = MOCK_INCIDENTS.filter(inc => inc.activeTimes.includes(timeOfDay));
+  const activeIncidents = incidents.filter(inc => inc.activeTimes.includes(timeOfDay));
 
   const times: { id: TimeOfDay; label: string }[] = [
     { id: 'morning', label: 'Morning (6AM - 12PM)' },
@@ -106,7 +154,7 @@ export const SafetyMapModal: React.FC<SafetyMapModalProps> = ({ isOpen, onClose,
               />
 
               {/* Render Safe Zones */}
-              {MOCK_SAFE_ZONES.map((zone) => (
+              {safeZones.map((zone) => (
                 <CircleMarker
                   key={zone.id}
                   center={[zone.lat, zone.lng]}

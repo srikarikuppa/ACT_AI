@@ -42,7 +42,7 @@ export interface MediaProof {
 export interface AIAnalysisResult {
   userAudioResponseText: string;
   urgencyScore: number; // 1-10
-  urgencyBadge: 'Yellow - Medium' | 'Red - High' | 'Orange - Urgent';
+  urgencyBadge: 'Green - Low' | 'Yellow - Medium' | 'Red - High';
   detectedIssue: string;
   targetHelpline: string;
   recommendedRouting: string;

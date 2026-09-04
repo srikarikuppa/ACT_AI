@@ -1,0 +1,6 @@
+id,lat,lng,name,type
+s1,25.3180,82.9710,Cantonment Police Station,police
+s2,25.3100,82.9800,Heritage Hospital,hospital
+s3,25.3250,82.9750,Women's Shelter (24/7),shelter
+s4,25.3140,82.9880,Main Square (Well-lit CCTV),well-lit
+s5,25.3300,82.9700,Traffic Police Checkpoint,police

@@ -51,9 +51,19 @@ app.post('/api/analyze-report', async (req, res) => {
 
     let userAudioResponseText = '';
     let urgencyScore = 5;
-    let urgencyBadge = 'Yellow - Medium';
+    
+    // Create intelligent defaults based on the category
+    if (category === 'violence' || category === 'women_safety') {
+      urgencyScore = 9;
+    } else if (category === 'theft') {
+      urgencyScore = 6;
+    } else if (category === 'land_crop' || category === 'other') {
+      urgencyScore = 3;
+    }
+
+    let urgencyBadge = urgencyScore >= 8 ? 'Red - High' : urgencyScore >= 5 ? 'Yellow - Medium' : 'Green - Low';
     let detectedIssue = category || 'Unspecified Incident';
-    let targetHelpline = '112 National Emergency Helpline';
+    let targetHelpline = category === 'women_safety' ? '1091 Women Helpline' : '112 National Emergency Helpline';
     let recommendedRouting = 'Local Police Control Room & Gram Panchayat Desk';
     let summaryEnglish = 'Citizen reported an incident requiring local review.';
     let keyEntities = {
@@ -84,7 +94,7 @@ Return JSON in this schema:
   "detected_language": "${targetLangName}",
   "incident_type": "Specific short category e.g. Theft, Crop Dispute, Assault, Women Harassment, Extortion",
   "urgency_score": integer between 1 and 10,
-  "urgency_badge": "Yellow - Medium" OR "Red - High" OR "Orange - Urgent",
+  "urgency_badge": "Green - Low" OR "Yellow - Medium" OR "Red - High",
   "summary_english": "Clear 2-3 sentence summary in simple English for police officers",
   "recommended_routing": "Specific local authority e.g. Local Mahila Police Station / Gram Panchayat Sarpanch Desk / District Revenue Officer / 112 Control Room",
   "target_helpline": "e.g. 112 Emergency SOS or 1091 Women Helpline or 1800 Panchayat Desk",
@@ -109,7 +119,7 @@ Return JSON in this schema:
           const parsed = JSON.parse(response.text.trim());
           userAudioResponseText = parsed.user_audio_response || '';
           urgencyScore = parsed.urgency_score || 5;
-          urgencyBadge = parsed.urgency_badge || (urgencyScore >= 8 ? 'Red - High' : urgencyScore >= 6 ? 'Orange - Urgent' : 'Yellow - Medium');
+          urgencyBadge = urgencyScore >= 8 ? 'Red - High' : urgencyScore >= 5 ? 'Yellow - Medium' : 'Green - Low';
           detectedIssue = parsed.incident_type || category || 'Reported Incident';
           targetHelpline = parsed.target_helpline || '112 National Emergency';
           recommendedRouting = parsed.recommended_routing || 'Local Police Station & Panchayat';

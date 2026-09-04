@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Search, ShieldCheck, MapPin, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Search, ShieldCheck, MapPin, Clock, AlertTriangle, BarChart2 } from 'lucide-react';
 import { SavedReportRecord, TrackingStatus } from '../types';
+import { AuthorityAnalytics } from './AuthorityAnalytics';
 
 interface PoliceDashboardProps {
   onBack: () => void;
@@ -11,6 +12,7 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeChatCaseCode, setActiveChatCaseCode] = useState<string | null>(null);
   const [chatMessage, setChatMessage] = useState('');
+  const [activeTab, setActiveTab] = useState<'reports' | 'analytics'>('reports');
 
   useEffect(() => {
     loadReports();
@@ -48,8 +50,9 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
   };
 
   const getUrgencyColor = (urgency: string) => {
-    if (urgency.includes('Red')) return 'text-red-400 bg-red-400/10 border-red-400/30';
-    if (urgency.includes('Orange')) return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
+    const u = (urgency || '').toLowerCase();
+    if (u.includes('red') || u.includes('high') || u.includes('8') || u.includes('9') || u.includes('10')) return 'text-red-400 bg-red-400/10 border-red-400/30';
+    if (u.includes('orange') || u.includes('urgent') || u.includes('6') || u.includes('7')) return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
     return 'text-amber-400 bg-amber-400/10 border-amber-400/30';
   };
 
@@ -64,8 +67,9 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
   };
 
   const getUrgencyValue = (urgency: string) => {
-    if (urgency.includes('Red')) return 3;
-    if (urgency.includes('Orange')) return 2;
+    const u = (urgency || '').toLowerCase();
+    if (u.includes('red') || u.includes('high') || u.includes('8') || u.includes('9') || u.includes('10')) return 3;
+    if (u.includes('orange') || u.includes('urgent') || u.includes('6') || u.includes('7')) return 2;
     return 1;
   };
 
@@ -135,22 +139,42 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
             <Search className="w-4 h-4 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2" />
           </div>
         </div>
+        
+        {/* Tabs */}
+        <div className="max-w-7xl mx-auto px-4 mt-4 flex gap-6 border-b border-[#30363D]">
+          <button 
+            onClick={() => setActiveTab('reports')} 
+            className={`pb-3 px-2 font-semibold text-sm flex items-center gap-2 transition-colors ${activeTab === 'reports' ? 'text-orange-400 border-b-2 border-orange-500' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            <ShieldCheck className="w-4 h-4" /> Live Incident Reports
+          </button>
+          <button 
+            onClick={() => setActiveTab('analytics')} 
+            className={`pb-3 px-2 font-semibold text-sm flex items-center gap-2 transition-colors ${activeTab === 'analytics' ? 'text-orange-400 border-b-2 border-orange-500' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            <BarChart2 className="w-4 h-4" /> Crime Analytics (CSV)
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
-        <div className="md:hidden relative mb-6">
-          <input 
-            type="text" 
-            placeholder="Search cases..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#161B22] border border-[#30363D] focus:border-orange-500/50 rounded-xl px-4 py-3 pl-11 text-sm outline-none"
-          />
-          <Search className="w-4 h-4 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2" />
-        </div>
+        {activeTab === 'analytics' ? (
+          <AuthorityAnalytics />
+        ) : (
+          <>
+            <div className="md:hidden relative mb-6">
+              <input 
+                type="text" 
+                placeholder="Search cases..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#161B22] border border-[#30363D] focus:border-orange-500/50 rounded-xl px-4 py-3 pl-11 text-sm outline-none"
+              />
+              <Search className="w-4 h-4 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2" />
+            </div>
 
-        {reports.length === 0 ? (
+            {reports.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
             <ShieldCheck className="w-16 h-16 text-slate-700" />
             <div className="space-y-1">
@@ -271,6 +295,8 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
               </div>
             ))}
           </div>
+        )}
+        </>
         )}
       </main>
     </div>
