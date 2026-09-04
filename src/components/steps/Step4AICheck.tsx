@@ -33,7 +33,10 @@ export const Step4AICheck: React.FC<Step4AICheckProps> = ({
       try {
         const response = await fetch('/api/analyze-report', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
           body: JSON.stringify({
             transcript: reportState.transcript,
             category: reportState.incidentCategory,
