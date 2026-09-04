@@ -210,7 +210,13 @@ export const Step4AICheck: React.FC<Step4AICheckProps> = ({
                   }`}
                 >
                   <AlertTriangle className="w-4 h-4" />
-                  <span>{analysis.urgencyBadge} ({analysis.urgencyScore}/10)</span>
+                  <span>
+                    {analysis.urgencyScore >= 8
+                      ? 'Red - High'
+                      : analysis.urgencyScore >= 5
+                      ? 'Yellow - Medium'
+                      : 'Green - Low'} ({analysis.urgencyScore}/10)
+                  </span>
                 </div>
               </div>
 

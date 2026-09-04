@@ -52,7 +52,8 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
   const getUrgencyColor = (urgency: string) => {
     const u = (urgency || '').toLowerCase();
     if (u.includes('red') || u.includes('high') || u.includes('8') || u.includes('9') || u.includes('10')) return 'text-red-400 bg-red-400/10 border-red-400/30';
-    if (u.includes('orange') || u.includes('urgent') || u.includes('6') || u.includes('7')) return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
+    if (u.includes('yellow') || u.includes('medium') || u.includes('5') || u.includes('6') || u.includes('7') || u.includes('orange') || u.includes('urgent')) return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30';
+    if (u.includes('green') || u.includes('low') || u.includes('1') || u.includes('2') || u.includes('3') || u.includes('4')) return 'text-green-400 bg-green-400/10 border-green-400/30';
     return 'text-amber-400 bg-amber-400/10 border-amber-400/30';
   };
 
