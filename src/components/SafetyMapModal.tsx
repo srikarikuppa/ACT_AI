@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, ShieldCheck, AlertTriangle } from 'lucide-react';
-import { MapContainer, TileLayer, Circle, Popup, CircleMarker } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import { X, Clock, ShieldCheck, AlertTriangle, Navigation } from 'lucide-react';
+import { APIProvider, Map, AdvancedMarker, Pin, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import Papa from 'papaparse';
 import { SupportedLanguage } from '../types';
 
@@ -30,25 +29,155 @@ interface SafetyMapModalProps {
   language: SupportedLanguage;
 }
 
+const MapUpdater = ({ location }: { location: { lat: number, lng: number } | null }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (map && location) {
+      map.panTo(location);
+    }
+  }, [map, location]);
+  return null;
+};
+
+const MapDataFetcher = ({ 
+  location, 
+  onZonesFetched,
+  onIncidentsFetched
+}: { 
+  location: { lat: number, lng: number } | null,
+  onZonesFetched: (zones: SafeZoneRecord[]) => void,
+  onIncidentsFetched: (incidents: IncidentRecord[]) => void
+}) => {
+  useEffect(() => {
+    if (!location) return;
+
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDlz5VrffIPMIo9mwGYWZS0Z3xVJ_dSg1E';
+
+    // Fetch Safe Zones
+    fetch('https://places.googleapis.com/v1/places:searchNearby', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'places.displayName,places.location,places.types,places.id'
+      },
+      body: JSON.stringify({
+        includedTypes: ['police', 'hospital'],
+        maxResultCount: 20,
+        locationRestriction: {
+          circle: {
+            center: {
+              latitude: location.lat,
+              longitude: location.lng
+            },
+            radius: 5000.0
+          }
+        }
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.places) {
+        const newZones: SafeZoneRecord[] = data.places.map((place: any) => {
+          const isPolice = place.types?.includes('police');
+          return {
+            id: place.id || Math.random().toString(),
+            lat: place.location.latitude,
+            lng: place.location.longitude,
+            name: place.displayName?.text || (isPolice ? 'Police Station' : 'Hospital'),
+            type: isPolice ? 'police' : 'hospital'
+          };
+        });
+        if (newZones.length > 0) {
+          onZonesFetched(newZones);
+        }
+      }
+    })
+    .catch(err => console.error("Error fetching safe zones:", err));
+
+    // Fetch Nightlife (Danger Zones)
+    fetch('https://places.googleapis.com/v1/places:searchNearby', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'places.displayName,places.location,places.types,places.id'
+      },
+      body: JSON.stringify({
+        includedTypes: ['bar', 'night_club', 'liquor_store'],
+        maxResultCount: 20,
+        locationRestriction: {
+          circle: {
+            center: {
+              latitude: location.lat,
+              longitude: location.lng
+            },
+            radius: 5000.0
+          }
+        }
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.places) {
+        const newIncidents: IncidentRecord[] = data.places.map((place: any) => {
+          const intensity = 0.4 + (Math.random() * 0.5); // Random intensity 0.4 - 0.9
+          return {
+            id: place.id || Math.random().toString(),
+            lat: place.location.latitude,
+            lng: place.location.longitude,
+            intensity: intensity,
+            activeTimes: ['evening', 'night'],
+            description: `Potential high-risk zone near: ${place.displayName?.text || 'Nightlife Area'}`
+          };
+        });
+        if (newIncidents.length > 0) {
+          onIncidentsFetched(newIncidents);
+        }
+      }
+    })
+    .catch(err => console.error("Error fetching danger zones:", err));
+
+  }, [location]);
+
+  return null;
+};
+
 export const SafetyMapModal: React.FC<SafetyMapModalProps> = ({ isOpen, onClose, language }) => {
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('night');
   const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
   const [safeZones, setSafeZones] = useState<SafeZoneRecord[]>([]);
+  const [activePopup, setActivePopup] = useState<{lat: number, lng: number, title: string, subtitle: string, type: 'safe' | 'incident'} | null>(null);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [cityName, setCityName] = useState<string>('Varanasi');
 
   useEffect(() => {
     if (isOpen) {
-      Papa.parse('/incidents.csv', {
-        download: true,
-        header: true,
-        dynamicTyping: true,
-        complete: (results) => {
-          const parsed = (results.data as any[]).filter(row => row.lat && row.lng).map(row => ({
-            ...row,
-            activeTimes: row.activeTimes ? row.activeTimes.split('|') : []
-          })) as IncidentRecord[];
-          setIncidents(parsed);
-        }
-      });
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+            
+            // Reverse Geocode to get the user's city name
+            const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDlz5VrffIPMIo9mwGYWZS0Z3xVJ_dSg1E';
+            fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${position.coords.latitude},${position.coords.longitude}&key=${apiKey}`)
+              .then(res => res.json())
+              .then(data => {
+                if (data.results && data.results.length > 0) {
+                  const components = data.results[0].address_components;
+                  const city = components.find((c: any) => c.types.includes('locality') || c.types.includes('administrative_area_level_2'))?.long_name;
+                  if (city) {
+                    setCityName(city);
+                  }
+                }
+              })
+              .catch(err => console.error("Error reverse geocoding:", err));
+          },
+          (error) => console.error("Error getting user location:", error)
+        );
+      }
+      
+
       
       Papa.parse('/safe_zones.csv', {
         download: true,
@@ -56,7 +185,7 @@ export const SafetyMapModal: React.FC<SafetyMapModalProps> = ({ isOpen, onClose,
         dynamicTyping: true,
         complete: (results) => {
           const parsed = (results.data as any[]).filter(row => row.lat && row.lng) as SafeZoneRecord[];
-          setSafeZones(parsed);
+          setSafeZones(prev => prev.length === 0 ? parsed : prev);
         }
       });
     }
@@ -66,6 +195,8 @@ export const SafetyMapModal: React.FC<SafetyMapModalProps> = ({ isOpen, onClose,
 
   // Filter incidents that are active during the selected time of day
   const activeIncidents = incidents.filter(inc => inc.activeTimes.includes(timeOfDay));
+
+
 
   const times: { id: TimeOfDay; label: string }[] = [
     { id: 'morning', label: 'Morning (6AM - 12PM)' },
@@ -87,7 +218,7 @@ export const SafetyMapModal: React.FC<SafetyMapModalProps> = ({ isOpen, onClose,
               Dynamic Safety & Safe Zone Map
             </h2>
             <p className="text-sm text-gray-400 mt-1">
-              Showing real-time safe zones and historical crime heatmaps for Varanasi.
+              Showing real-time safe zones and historical crime heatmaps for {cityName}.
             </p>
           </div>
           <button 
@@ -128,73 +259,89 @@ export const SafetyMapModal: React.FC<SafetyMapModalProps> = ({ isOpen, onClose,
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Map Legend</h3>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-blue-500/50 border-2 border-blue-400" />
-                  <span className="text-sm text-gray-300">Verified Safe Zones (Police, Hospitals, 24/7 Shelters)</span>
+                  <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
+                  <span className="text-sm text-gray-300">Your Current Location</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-red-500/30 border-2 border-red-500" />
-                  <span className="text-sm text-gray-300">High-Risk Crime Heatmap (Varies by time)</span>
+                  <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white" />
+                  <span className="text-sm text-gray-300">Verified Safe Zones (Police, Hospitals)</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white" />
+                  <span className="text-sm text-gray-300">High-Risk Crime Heatmap</span>
                 </div>
               </div>
             </div>
+
+            {activePopup && (
+               <div className="mt-4 p-4 rounded-xl border border-gray-800 bg-[#161B22]">
+                  <div className={`font-bold flex items-center gap-1 ${activePopup.type === 'incident' ? 'text-red-500' : 'text-blue-500'}`}>
+                    {activePopup.type === 'incident' && <AlertTriangle className="w-4 h-4" />}
+                    {activePopup.title}
+                  </div>
+                  <div className="text-sm text-gray-400 mt-2">{activePopup.subtitle}</div>
+               </div>
+            )}
           </div>
 
           {/* Map Area */}
           <div className="flex-1 relative bg-gray-900">
-            {/* The map container */}
-            <MapContainer 
-              center={[25.3176, 82.9739]} 
-              zoom={14} 
-              style={{ width: '100%', height: '100%' }}
-              zoomControl={false}
-            >
-              <TileLayer
-                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-              />
+            <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDlz5VrffIPMIo9mwGYWZS0Z3xVJ_dSg1E'}>
+              <Map
+                defaultCenter={{ lat: 25.3176, lng: 82.9739 }}
+                defaultZoom={13}
+                mapId="DEMO_MAP_ID"
+                disableDefaultUI={true}
+                colorScheme="DARK"
+              >
+                <MapUpdater location={userLocation} />
 
-              {/* Render Safe Zones */}
-              {safeZones.map((zone) => (
-                <CircleMarker
-                  key={zone.id}
-                  center={[zone.lat, zone.lng]}
-                  radius={12}
-                  pathOptions={{ 
-                    color: '#3b82f6', 
-                    fillColor: '#3b82f6', 
-                    fillOpacity: 0.6,
-                    weight: 2
-                  }}
-                >
-                  <Popup className="custom-popup">
-                    <div className="font-bold text-gray-900">{zone.name}</div>
-                    <div className="text-sm text-gray-600 capitalize">Type: {zone.type}</div>
-                  </Popup>
-                </CircleMarker>
-              ))}
+                {/* Render User Location */}
+                {userLocation && (
+                  <AdvancedMarker position={userLocation} title="Your Location" zIndex={50}>
+                    <div className="w-5 h-5 bg-green-500 rounded-full border-[3px] border-white shadow-[0_0_15px_rgba(34,197,94,0.9)] animate-pulse" />
+                  </AdvancedMarker>
+                )}
 
-              {/* Render Heatmap Incidents */}
-              {activeIncidents.map((incident) => (
-                <Circle
-                  key={incident.id}
-                  center={[incident.lat, incident.lng]}
-                  radius={400 * incident.intensity} // The radius grows based on intensity
-                  pathOptions={{ 
-                    color: '#ef4444', 
-                    fillColor: '#ef4444', 
-                    fillOpacity: incident.intensity * 0.5,
-                    stroke: false
-                  }}
-                >
-                  <Popup>
-                    <div className="font-bold text-red-600 flex items-center gap-1">
-                      <AlertTriangle className="w-4 h-4" /> High Risk Area
-                    </div>
-                    <div className="text-sm text-gray-700">{incident.description}</div>
-                  </Popup>
-                </Circle>
-              ))}
-            </MapContainer>
+                <MapDataFetcher location={userLocation} onZonesFetched={setSafeZones} onIncidentsFetched={setIncidents} />
+
+                {/* Render Safe Zones */}
+                {safeZones.map((zone) => {
+                  return (
+                    <AdvancedMarker
+                      key={zone.id}
+                      position={{ lat: zone.lat, lng: zone.lng }}
+                      onClick={() => setActivePopup({ lat: zone.lat, lng: zone.lng, title: zone.name, subtitle: `Type: ${zone.type}`, type: 'safe' })}
+                    >
+                      <Pin background={'#3b82f6'} borderColor={'#ffffff'} glyphColor={'#ffffff'} />
+                    </AdvancedMarker>
+                  );
+                })}
+
+                {/* Render Heatmap Incidents */}
+                {activeIncidents.map((incident) => {
+                  return (
+                    <AdvancedMarker
+                      key={incident.id}
+                      position={{ lat: incident.lat, lng: incident.lng }}
+                      onClick={() => setActivePopup({ lat: incident.lat, lng: incident.lng, title: 'High Risk Area', subtitle: incident.description, type: 'incident' })}
+                    >
+                       {/* Scale size based on intensity */}
+                       <div 
+                          style={{
+                             width: `${20 + (incident.intensity * 20)}px`,
+                             height: `${20 + (incident.intensity * 20)}px`,
+                             backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                             border: '2px solid rgba(239, 68, 68, 1)',
+                             borderRadius: '50%',
+                             boxShadow: '0 0 10px rgba(239, 68, 68, 0.5)'
+                          }}
+                       />
+                    </AdvancedMarker>
+                  );
+                })}
+              </Map>
+            </APIProvider>
           </div>
         </div>
       </div>

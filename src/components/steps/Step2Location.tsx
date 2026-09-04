@@ -40,45 +40,65 @@ export const Step2Location: React.FC<Step2LocationProps> = ({
     }
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
 
-        // Auto assign a village matching nearest coordinates or rural default
-        const randomState = RURAL_LOCATION_DATA[0];
-        const randomDistrict = randomState.districts[0];
-        const detectedVillage = randomDistrict.villages[0];
+        try {
+          // Use OpenStreetMap Nominatim API for real reverse geocoding
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+          const data = await response.json();
+          
+          const address = data.address || {};
+          const detectedState = address.state || 'Unknown State';
+          const detectedDistrict = address.state_district || address.county || address.city_district || address.city || 'Unknown District';
+          const detectedVillage = address.village || address.suburb || address.town || address.neighbourhood || address.city || 'Local Area';
 
-        onLocationChange({
-          state: randomState.state,
-          district: randomDistrict.name,
-          village: detectedVillage,
-          lat: Number(lat.toFixed(4)),
-          lng: Number(lng.toFixed(4)),
-          rawAddress: `GPS Pinpoint (${lat.toFixed(3)}, ${lng.toFixed(3)}) - ${detectedVillage}`,
-          isGpsDetected: true,
-        });
+          onLocationChange({
+            state: detectedState,
+            district: detectedDistrict,
+            village: detectedVillage,
+            lat: Number(lat.toFixed(4)),
+            lng: Number(lng.toFixed(4)),
+            rawAddress: data.display_name || `GPS Pinpoint (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
+            isGpsDetected: true,
+          });
 
-        setIsLocating(false);
-        setLocationStatusMsg(`${t.locationFound}: ${detectedVillage} (${lat.toFixed(2)}, ${lng.toFixed(2)})`);
-        speakText(`${t.locationFound}. ${detectedVillage}`, language);
+          setIsLocating(false);
+          setLocationStatusMsg(`${t.locationFound}: ${detectedVillage}`);
+          speakText(`${t.locationFound}. ${detectedVillage}`, language);
+        } catch (err) {
+          console.error('Reverse geocoding error:', err);
+          // Fallback if the fetch fails but we have coords
+          onLocationChange({
+            state: 'Detected State',
+            district: 'Detected District',
+            village: 'Detected Location',
+            lat: Number(lat.toFixed(4)),
+            lng: Number(lng.toFixed(4)),
+            rawAddress: `GPS Pinpoint (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
+            isGpsDetected: true,
+          });
+          setIsLocating(false);
+          setLocationStatusMsg(`Location found using coordinates.`);
+        }
       },
       (err) => {
         console.warn('Geolocation error:', err);
-        // Fallback to default Varanasi / Shivpur Panchayat so user is never blocked
+        // Fallback to default Varanasi if they block permission
         onLocationChange({
           state: 'Uttar Pradesh',
           district: 'Varanasi',
           village: 'Shivpur Gram Panchayat',
           lat: 25.3176,
           lng: 82.9739,
-          rawAddress: 'Shivpur Gram Panchayat, Varanasi (Approx Location)',
+          rawAddress: 'Shivpur Gram Panchayat, Varanasi',
           isGpsDetected: false,
         });
         setIsLocating(false);
         setLocationStatusMsg(t.locationPinpointed || 'Location pinpointed. You can also adjust below.');
       },
-      { timeout: 8000, enableHighAccuracy: true }
+      { timeout: 10000, enableHighAccuracy: true }
     );
   };
 
@@ -212,6 +232,9 @@ export const Step2Location: React.FC<Step2LocationProps> = ({
                   {s.state}
                 </option>
               ))}
+              {!RURAL_LOCATION_DATA.find(s => s.state === location.state) && location.state && (
+                <option value={location.state} className="bg-[#161B22] text-white">{location.state}</option>
+              )}
             </select>
           </div>
 
@@ -228,6 +251,9 @@ export const Step2Location: React.FC<Step2LocationProps> = ({
                   {d.name}
                 </option>
               ))}
+              {!selectedStateObj?.districts.find(d => d.name === location.district) && location.district && (
+                <option value={location.district} className="bg-[#161B22] text-white">{location.district}</option>
+              )}
             </select>
           </div>
 
@@ -244,6 +270,9 @@ export const Step2Location: React.FC<Step2LocationProps> = ({
                   {v}
                 </option>
               ))}
+              {!selectedDistrictObj?.villages.includes(location.village) && location.village && (
+                <option value={location.village} className="bg-[#161B22] text-white">{location.village}</option>
+              )}
             </select>
           </div>
         </div>
