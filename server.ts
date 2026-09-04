@@ -116,7 +116,11 @@ Return JSON in this schema:
         });
 
         if (response.text) {
-          const parsed = JSON.parse(response.text.trim());
+          let cleanText = response.text.trim();
+          if (cleanText.startsWith('```')) {
+            cleanText = cleanText.replace(/^```(json)?\n?/, '').replace(/\n?```$/, '').trim();
+          }
+          const parsed = JSON.parse(cleanText);
           userAudioResponseText = parsed.user_audio_response || '';
           urgencyScore = parsed.urgency_score || 5;
           urgencyBadge = urgencyScore >= 8 ? 'Red - High' : urgencyScore >= 5 ? 'Yellow - Medium' : 'Green - Low';
