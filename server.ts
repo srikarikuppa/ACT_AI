@@ -118,7 +118,7 @@ Return JSON in this schema:
         `;
 
         const response = await ai.models.generateContent({
-          model: 'gemini-1.5-flash',
+          model: 'gemini-2.0-flash',
           contents: prompt,
           config: {
             responseMimeType: 'application/json',
