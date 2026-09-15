@@ -3,6 +3,7 @@ import { X, Search, ShieldCheck, Clock, MapPin, AlertTriangle, Building2, Volume
 import { SupportedLanguage, SavedReportRecord } from '../types';
 import { TRANSLATIONS } from '../utils/translations';
 import { speakText } from '../utils/speechUtils';
+import { auth } from '../utils/firebase';
 
 interface CaseTrackerModalProps {
   isOpen: boolean;
@@ -28,7 +29,7 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
 
   const t = TRANSLATIONS[language] || TRANSLATIONS.en;
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setSearchError('');
     const cleanCode = searchInput.trim().toUpperCase();
@@ -38,29 +39,36 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
       return;
     }
 
-    const found = savedReports.find(
-      (r) => r.caseCode.toUpperCase() === cleanCode || r.caseCode.replace('#', '').toUpperCase() === cleanCode.replace('#', '')
-    );
+    try {
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+      const response = await fetch(`/api/reports/${cleanCode.replace('#', '')}`, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      const data = await response.json();
 
-    if (found) {
-      setSearchedRecord(found);
-    } else {
-      // Default sample report for demo purposes if not found in local state
-      if (cleanCode.includes('ACT') || cleanCode.length >= 4) {
+      if (data.success && data.report) {
+        const r = data.report;
         setSearchedRecord({
-          caseCode: cleanCode.startsWith('#') ? cleanCode : `#${cleanCode}`,
-          submittedAt: new Date().toLocaleDateString(),
-          category: t.categories.land_crop,
-          location: 'Varanasi District, Shivpur Gram Panchayat',
-          status: t.sendReportSafely,
-          urgency: 'Urgent',
-          summary: 'Report filed anonymously. Gram Panchayat desk and Station House Officer notified.',
-          targetHelpline: '1800-111-222',
+          caseCode: r.caseCode,
+          submittedAt: new Date(r.createdAt).toLocaleDateString(),
+          category: r.incidentCategory,
+          location: r.location?.village || r.location?.district || 'Unknown Location',
+          status: r.status || 'Submitted',
+          urgency: r.analysis?.urgencyBadge || 'Medium',
+          summary: r.analysis?.summaryEnglish || 'Report filed anonymously.',
+          targetHelpline: r.analysis?.targetHelpline || '112',
+          messages: []
         });
       } else {
         setSearchError(t.noCaseFound);
         setSearchedRecord(null);
       }
+    } catch (error) {
+      setSearchError('Server error checking case status.');
+      setSearchedRecord(null);
     }
   };
 

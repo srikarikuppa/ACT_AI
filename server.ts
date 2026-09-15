@@ -4,8 +4,19 @@ import dotenv from 'dotenv';
 import https from 'https';
 import { exec } from 'child_process';
 import { GoogleGenAI, Type } from '@google/genai';
+import mongoose from 'mongoose';
+import { initFirebaseAdmin, optionalAuth } from './src/backend/middleware/auth.ts';
+import { Report } from './src/backend/models/Report.ts';
+import { User } from './src/backend/models/User.ts';
 
 dotenv.config();
+
+initFirebaseAdmin();
+
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/act_ai';
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('[ACT.ai] Connected to MongoDB'))
+  .catch(err => console.error('[ACT.ai] MongoDB connection error:', err));
 
 const app = express();
 const PORT = 3000;
@@ -32,7 +43,7 @@ function getGeminiClient(): GoogleGenAI | null {
 }
 
 // AI Analysis Endpoint for ACT.ai
-app.post('/api/analyze-report', async (req, res) => {
+app.post('/api/analyze-report', optionalAuth, async (req, res) => {
   try {
     const { transcript, category, location, language, hasPhoto, hasVideo, hasVoiceNote } = req.body;
 
@@ -169,9 +180,35 @@ Return JSON in this schema:
       anonymity_verified: true,
     };
 
+    const caseCode = `ACT-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const newReport = await Report.create({
+      caseCode,
+      firebaseUid: req.user?.uid,
+      incidentCategory: category || 'other',
+      transcript,
+      language: userLang,
+      location,
+      media: {
+        photoUrl: hasPhoto ? 'yes' : '',
+        videoUrl: hasVideo ? 'yes' : '',
+        voiceNoteUrl: hasVoiceNote ? 'yes' : '',
+      },
+      analysis: {
+        urgencyScore,
+        urgencyBadge,
+        detectedIssue,
+        targetHelpline,
+        recommendedRouting,
+        summaryEnglish,
+        keyEntities,
+      }
+    });
+
     return res.json({
       success: true,
       analysis: {
+        caseCode,
         userAudioResponseText,
         urgencyScore,
         urgencyBadge,
@@ -189,6 +226,53 @@ Return JSON in this schema:
       success: false,
       error: error.message || 'Failed to process report',
     });
+  }
+});
+
+// Get Report by Case Code
+app.get('/api/reports/:caseCode', optionalAuth, async (req, res) => {
+  try {
+    const report = await Report.findOne({ caseCode: req.params.caseCode });
+    if (!report) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+    res.json({ success: true, report });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error fetching report' });
+  }
+});
+
+// Get Analytics
+app.get('/api/analytics', async (req, res) => {
+  try {
+    const reports = await Report.find({});
+    
+    const analyticsMap = new Map();
+    
+    // Add default month if empty
+    if (reports.length === 0) {
+      const curMonth = new Date().toLocaleString('default', { month: 'short' });
+      analyticsMap.set(curMonth, { month: curMonth, theft: 0, harassment: 0, disputes: 0, emergencies: 0 });
+    }
+
+    reports.forEach(r => {
+      const month = new Date(r.createdAt).toLocaleString('default', { month: 'short' });
+      if (!analyticsMap.has(month)) {
+        analyticsMap.set(month, { month, theft: 0, harassment: 0, disputes: 0, emergencies: 0 });
+      }
+      
+      const stats = analyticsMap.get(month);
+      const cat = (r.incidentCategory || '').toLowerCase();
+      if (cat.includes('theft')) stats.theft++;
+      else if (cat.includes('women') || cat.includes('harass')) stats.harassment++;
+      else if (cat.includes('land') || cat.includes('crop') || cat.includes('dispute')) stats.disputes++;
+      else stats.emergencies++;
+    });
+
+    const data = Array.from(analyticsMap.values());
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error generating analytics' });
   }
 });
 

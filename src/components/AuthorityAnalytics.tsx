@@ -15,14 +15,14 @@ export const AuthorityAnalytics: React.FC = () => {
   const [data, setData] = useState<CrimeStat[]>([]);
 
   useEffect(() => {
-    Papa.parse('/crime_stats.csv', {
-      download: true,
-      header: true,
-      dynamicTyping: true,
-      complete: (results) => {
-        setData(results.data as CrimeStat[]);
-      }
-    });
+    fetch('/api/analytics')
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && json.data) {
+          setData(json.data);
+        }
+      })
+      .catch(err => console.error('Error fetching analytics:', err));
   }, []);
 
   if (data.length === 0) {

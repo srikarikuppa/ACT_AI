@@ -13,6 +13,8 @@ import { Step5SendConfirm } from './components/steps/Step5SendConfirm';
 import { LandingPage } from './components/LandingPage';
 import { PoliceDashboard } from './components/PoliceDashboard';
 import { SafetyMapModal } from './components/SafetyMapModal';
+import { loginAnonymously, auth } from './utils/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'citizen' | 'police'>(() => {
@@ -26,7 +28,19 @@ export default function App() {
       setCurrentView((hash === 'citizen' || hash === 'police') ? hash : 'landing');
     };
     window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    
+    // Authenticate anonymously
+    loginAnonymously().catch(console.error);
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log('User is logged in anonymously:', user.uid);
+      }
+    });
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      unsubscribeAuth();
+    };
   }, []);
 
   const navigateTo = (view: 'landing' | 'citizen' | 'police') => {

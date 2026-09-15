@@ -3,6 +3,7 @@ import { Bot, Volume2, ShieldCheck, AlertTriangle, PhoneCall, ChevronRight, Code
 import { SupportedLanguage, AIAnalysisResult, ReportState } from '../../types';
 import { TRANSLATIONS } from '../../utils/translations';
 import { speakText, stopSpeech } from '../../utils/speechUtils';
+import { auth } from '../../utils/firebase';
 
 interface Step4AICheckProps {
   reportState: ReportState;
@@ -31,11 +32,13 @@ export const Step4AICheck: React.FC<Step4AICheckProps> = ({
     const performAiAnalysis = async () => {
       setIsLoading(true);
       try {
+        const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
         const response = await fetch('/api/analyze-report', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'true'
+            'ngrok-skip-browser-warning': 'true',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           },
           body: JSON.stringify({
             transcript: reportState.transcript,
