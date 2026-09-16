@@ -230,7 +230,7 @@ export const SafetyMapModal: React.FC<SafetyMapModalProps> = ({ isOpen, onClose,
         </div>
 
         {/* Content */}
-        <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
+        <div className="flex flex-1 flex-col-reverse md:flex-row overflow-hidden">
           {/* Sidebar Controls */}
           <div className="w-full md:w-80 border-r border-gray-800 bg-[#0D1117] p-6 flex flex-col gap-8 overflow-y-auto">
             <div>
@@ -285,7 +285,7 @@ export const SafetyMapModal: React.FC<SafetyMapModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Map Area */}
-          <div className="flex-1 relative bg-gray-900">
+          <div className="flex-1 relative bg-gray-900 min-h-[50%] md:min-h-0">
             <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDlz5VrffIPMIo9mwGYWZS0Z3xVJ_dSg1E'}>
               <Map
                 defaultCenter={{ lat: 25.3176, lng: 82.9739 }}
