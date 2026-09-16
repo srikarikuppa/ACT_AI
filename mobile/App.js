@@ -4,7 +4,7 @@ import { WebView } from 'react-native-webview';
 
 export default function App() {
   // Use the secure HTTPS tunnel to enable Microphone access
-  const APP_URL = 'https://von-van-agriculture-began.trycloudflare.com';
+  const APP_URL = 'https://due-paragraphs-considers-elimination.trycloudflare.com';
 
   return (
     <SafeAreaView style={styles.container}>
