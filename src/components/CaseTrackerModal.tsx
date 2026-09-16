@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Search, ShieldCheck, Clock, MapPin, AlertTriangle, Building2, Volume2, CheckCircle2, Circle } from 'lucide-react';
 import { SupportedLanguage, SavedReportRecord } from '../types';
 import { TRANSLATIONS } from '../utils/translations';
 import { speakText } from '../utils/speechUtils';
-import { auth } from '../utils/firebase';
+import { db, auth } from '../utils/firebase';
+import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
 
 interface CaseTrackerModalProps {
   isOpen: boolean;
@@ -24,6 +25,24 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
   const [searchedRecord, setSearchedRecord] = useState<SavedReportRecord | null>(null);
   const [searchError, setSearchError] = useState('');
   const [chatMessage, setChatMessage] = useState('');
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (searchedRecord) {
+      const q = query(
+        collection(db, `chats/${searchedRecord.caseCode}/messages`),
+        orderBy('timestamp', 'asc')
+      );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const msgs = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setChatMessages(msgs);
+      });
+      return () => unsubscribe();
+    }
+  }, [searchedRecord]);
 
   if (!isOpen) return null;
 
@@ -79,24 +98,22 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
     );
   };
 
-  const handleSendChat = (e: React.FormEvent) => {
+  const handleSendChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatMessage.trim() || !searchedRecord) return;
 
     const newMessage = {
-      sender: 'citizen' as const,
+      sender: 'citizen',
       text: chatMessage.trim(),
-      timestamp: new Date().toLocaleString(),
+      timestamp: serverTimestamp(),
     };
 
-    const updatedRecord = {
-      ...searchedRecord,
-      messages: [...(searchedRecord.messages || []), newMessage],
-    };
-
-    setSearchedRecord(updatedRecord);
-    onUpdateReport(updatedRecord);
     setChatMessage('');
+    try {
+      await addDoc(collection(db, `chats/${searchedRecord.caseCode}/messages`), newMessage);
+    } catch (err) {
+      console.error('Failed to send chat', err);
+    }
   };
 
   const TRACKING_STEPS = [
@@ -255,19 +272,27 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
               <div className="mt-6 border-t border-[#21262D] pt-4">
                 <h3 className="text-sm font-bold text-white mb-4">Direct Message Authority</h3>
                 
-                <div className="bg-[#161B22] border border-[#21262D] rounded-2xl h-48 overflow-y-auto p-4 mb-3 space-y-3">
-                  {(!searchedRecord.messages || searchedRecord.messages.length === 0) ? (
-                    <p className="text-xs text-slate-500 text-center italic mt-16">No messages yet. You can send a secure message to the police here.</p>
-                  ) : (
-                    searchedRecord.messages.map((msg, idx) => (
-                      <div key={idx} className={`flex flex-col ${msg.sender === 'citizen' ? 'items-end' : 'items-start'}`}>
-                        <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${msg.sender === 'citizen' ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-[#30363D] text-slate-200 rounded-bl-sm'}`}>
-                          {msg.text}
+                <div className="bg-[#161B22] border border-[#21262D] rounded-2xl h-48 p-4 mb-3 flex flex-col">
+                  <div className="flex-1 overflow-y-auto mb-4 space-y-3">
+                    {chatMessages.length === 0 ? (
+                      <p className="text-gray-400 text-sm italic">{t.noMessagesYet}</p>
+                    ) : (
+                      chatMessages.map((msg: any, i: number) => (
+                        <div key={msg.id || i} className={`flex ${msg.sender === 'citizen' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`rounded-xl px-4 py-2 max-w-[80%] ${
+                            msg.sender === 'citizen' 
+                              ? 'bg-orange-500 text-white rounded-br-none' 
+                              : 'bg-[#2A2A2A] text-gray-200 border border-gray-700/50 rounded-bl-none'
+                          }`}>
+                            <p className="text-sm">{msg.text}</p>
+                            <span className="text-[10px] opacity-70 block mt-1">
+                              {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString() : new Date().toLocaleTimeString()}
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-[10px] text-slate-500 mt-1">{msg.timestamp}</span>
-                      </div>
-                    ))
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
 
                 <form onSubmit={handleSendChat} className="flex gap-2">

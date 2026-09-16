@@ -62,7 +62,7 @@ app.post('/api/analyze-report', optionalAuth, async (req, res) => {
 
     let userAudioResponseText = '';
     let urgencyScore = 5;
-    
+
     // Create intelligent defaults based on the category
     if (category === 'violence' || category === 'women_safety') {
       urgencyScore = 9;
@@ -246,9 +246,9 @@ app.get('/api/reports/:caseCode', optionalAuth, async (req, res) => {
 app.get('/api/analytics', async (req, res) => {
   try {
     const reports = await Report.find({});
-    
+
     const analyticsMap = new Map();
-    
+
     // Add default month if empty
     if (reports.length === 0) {
       const curMonth = new Date().toLocaleString('default', { month: 'short' });
@@ -260,7 +260,7 @@ app.get('/api/analytics', async (req, res) => {
       if (!analyticsMap.has(month)) {
         analyticsMap.set(month, { month, theft: 0, harassment: 0, disputes: 0, emergencies: 0 });
       }
-      
+
       const stats = analyticsMap.get(month);
       const cat = (r.incidentCategory || '').toLowerCase();
       if (cat.includes('theft')) stats.theft++;
@@ -288,7 +288,7 @@ app.get('/api/tts', (req, res) => {
   if (!text) return res.status(400).send('No text');
 
   const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${lang}&client=tw-ob`;
-  
+
   https.get(url, (response) => {
     res.setHeader('Content-Type', 'audio/mpeg');
     response.pipe(res);
@@ -318,7 +318,7 @@ async function setupApp() {
   app.listen(PORT, '0.0.0.0', () => {
     const url = `http://localhost:${PORT}`;
     console.log(`[ACT.ai] Server running on ${url}`);
-    
+
     // Automatically open the browser
     const startCmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
     exec(`${startCmd} ${url}`);

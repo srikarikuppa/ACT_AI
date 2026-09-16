@@ -28,7 +28,7 @@ export default function App() {
       setCurrentView((hash === 'citizen' || hash === 'police') ? hash : 'landing');
     };
     window.addEventListener('hashchange', handleHashChange);
-    
+
     // Authenticate anonymously
     loginAnonymously().catch(console.error);
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {

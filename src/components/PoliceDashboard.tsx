@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Search, ShieldCheck, MapPin, Clock, AlertTriangle, BarChart2 } from 'lucide-react';
+import { db } from '../utils/firebase';
+import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { SavedReportRecord, TrackingStatus } from '../types';
 import { AuthorityAnalytics } from './AuthorityAnalytics';
 
@@ -12,7 +14,30 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeChatCaseCode, setActiveChatCaseCode] = useState<string | null>(null);
   const [chatMessage, setChatMessage] = useState('');
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'reports' | 'analytics'>('reports');
+
+  useEffect(() => {
+    let unsubscribe: () => void;
+    if (activeChatCaseCode) {
+      const q = query(
+        collection(db, `chats/${activeChatCaseCode}/messages`),
+        orderBy('timestamp', 'asc')
+      );
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const msgs = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setChatMessages(msgs);
+      });
+    } else {
+      setChatMessages([]);
+    }
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [activeChatCaseCode]);
 
   useEffect(() => {
     loadReports();
@@ -80,30 +105,22 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
     r.location.toLowerCase().includes(searchQuery.toLowerCase())
   ).sort((a, b) => getUrgencyValue(b.urgency) - getUrgencyValue(a.urgency));
 
-  const handleSendChat = (e: React.FormEvent, caseCode: string) => {
+  const handleSendChat = async (e: React.FormEvent, caseCode: string) => {
     e.preventDefault();
     if (!chatMessage.trim()) return;
 
-    const updatedReports = reports.map(report => {
-      if (report.caseCode === caseCode) {
-        return {
-          ...report,
-          messages: [
-            ...(report.messages || []),
-            { sender: 'police' as const, text: chatMessage.trim(), timestamp: new Date().toLocaleString() }
-          ]
-        };
-      }
-      return report;
-    });
+    const newMessage = {
+      sender: 'police',
+      text: chatMessage.trim(),
+      timestamp: serverTimestamp()
+    };
 
-    setReports(updatedReports);
-    try {
-      localStorage.setItem('act_ai_saved_reports', JSON.stringify(updatedReports));
-    } catch (e) {
-      console.error('Failed to save chat', e);
-    }
     setChatMessage('');
+    try {
+      await addDoc(collection(db, `chats/${caseCode}/messages`), newMessage);
+    } catch (err) {
+      console.error('Error sending chat', err);
+    }
   };
 
   return (
@@ -257,15 +274,17 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
                   {activeChatCaseCode === report.caseCode && (
                     <div className="bg-[#0D1117] border border-[#21262D] rounded-xl p-3 animate-fade-in">
                       <div className="h-40 overflow-y-auto mb-3 space-y-2 pr-1">
-                        {(!report.messages || report.messages.length === 0) ? (
+                        {chatMessages.length === 0 ? (
                           <p className="text-xs text-slate-500 text-center italic mt-12">No messages. You can reach out to the informant here.</p>
                         ) : (
-                          report.messages.map((msg, idx) => (
-                            <div key={idx} className={`flex flex-col ${msg.sender === 'police' ? 'items-end' : 'items-start'}`}>
+                          chatMessages.map((msg: any, idx: number) => (
+                            <div key={msg.id || idx} className={`flex flex-col ${msg.sender === 'police' ? 'items-end' : 'items-start'}`}>
                               <div className={`max-w-[85%] rounded-xl px-3 py-1.5 text-sm ${msg.sender === 'police' ? 'bg-orange-600/20 text-orange-400 border border-orange-500/30 rounded-br-sm' : 'bg-[#21262D] text-slate-300 border border-[#30363D] rounded-bl-sm'}`}>
                                 {msg.text}
                               </div>
-                              <span className="text-[9px] text-slate-500 mt-0.5">{msg.timestamp}</span>
+                              <span className="text-[9px] text-slate-500 mt-0.5">
+                                {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString() : new Date().toLocaleTimeString()}
+                              </span>
                             </div>
                           ))
                         )}
