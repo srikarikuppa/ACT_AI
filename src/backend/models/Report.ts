@@ -32,6 +32,11 @@ export interface IReport extends Document {
     };
   };
   status: 'Submitted' | 'Under Review' | 'Action Taken' | 'Resolved';
+  messages?: Array<{
+    sender: string;
+    text: string;
+    timestamp: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,6 +78,13 @@ const ReportSchema: Schema = new Schema(
       enum: ['Submitted', 'Under Review', 'Action Taken', 'Resolved'],
       default: 'Submitted',
     },
+    messages: [
+      {
+        sender: { type: String, required: true },
+        text: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

@@ -17,24 +17,76 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'reports' | 'analytics'>('reports');
 
+  const normalizeCode = (code: string) => (code || '').replace('#', '').trim().toUpperCase();
+
+  const deduplicateMessages = (msgs: any[]) => {
+    const seen = new Set<string>();
+    return msgs.filter((m) => {
+      const timeKey = m.timestamp?.toDate 
+        ? m.timestamp.toDate().toISOString().slice(0, 16) 
+        : (m.timestamp ? String(m.timestamp).slice(0, 16) : '');
+      const key = m.id || `${m.sender}-${m.text.trim()}-${timeKey}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
   useEffect(() => {
-    let unsubscribe: () => void;
-    if (activeChatCaseCode) {
+    if (!activeChatCaseCode) {
+      setChatMessages([]);
+      return;
+    }
+
+    const cleanCode = normalizeCode(activeChatCaseCode);
+    let firestoreActive = false;
+
+    // Backend message polling fallback
+    const fetchBackendMessages = async () => {
+      if (firestoreActive) return;
+      try {
+        const res = await fetch(`/api/reports/${cleanCode}/messages`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.messages) && !firestoreActive) {
+          setChatMessages(prev => deduplicateMessages(prev.length === 0 ? data.messages : [...prev, ...data.messages]));
+        }
+      } catch (e) {
+        console.warn('Backend message poll error in police dashboard:', e);
+      }
+    };
+
+    // Firestore real-time listener (primary)
+    let unsubscribe: (() => void) | null = null;
+    try {
       const q = query(
-        collection(db, `chats/${activeChatCaseCode}/messages`),
+        collection(db, `chats/${cleanCode}/messages`),
         orderBy('timestamp', 'asc')
       );
       unsubscribe = onSnapshot(q, (snapshot) => {
+        firestoreActive = true;
         const msgs = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        setChatMessages(msgs);
+        setChatMessages(deduplicateMessages(msgs));
+      }, (err) => {
+        console.warn('Firestore snapshot error in Police Dashboard, falling back to backend API:', err);
+        firestoreActive = false;
+        fetchBackendMessages();
       });
-    } else {
-      setChatMessages([]);
+    } catch (err) {
+      console.warn('Firestore setup error in Police Dashboard:', err);
+      fetchBackendMessages();
     }
+
+    const interval = setInterval(() => {
+      if (!firestoreActive) {
+        fetchBackendMessages();
+      }
+    }, 3000);
+
     return () => {
+      clearInterval(interval);
       if (unsubscribe) unsubscribe();
     };
   }, [activeChatCaseCode]);
@@ -43,18 +95,51 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
     loadReports();
   }, []);
 
-  const loadReports = () => {
+  const loadReports = async () => {
+    let localReports: SavedReportRecord[] = [];
     try {
       const stored = localStorage.getItem('act_ai_saved_reports');
       if (stored) {
-        setReports(JSON.parse(stored));
+        localReports = JSON.parse(stored);
       }
     } catch (e) {
       console.warn('LocalStorage error loading reports:', e);
     }
+
+    try {
+      const res = await fetch('/api/reports');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.reports)) {
+        const serverReports: SavedReportRecord[] = data.reports.map((r: any) => ({
+          caseCode: r.caseCode,
+          submittedAt: new Date(r.createdAt || Date.now()).toLocaleDateString(),
+          category: r.incidentCategory ? r.incidentCategory.toUpperCase() : 'General Safety',
+          location: r.location?.village ? `${r.location.village}, ${r.location.district || ''}` : 'Unknown Location',
+          status: r.status || 'Submitted',
+          urgency: r.analysis?.urgencyBadge || 'Medium',
+          summary: r.analysis?.summaryEnglish || r.transcript || 'Anonymous incident reported.',
+          targetHelpline: r.analysis?.targetHelpline || '112 Emergency SOS',
+        }));
+
+        const map = new Map<string, SavedReportRecord>();
+        localReports.forEach(r => map.set(normalizeCode(r.caseCode), r));
+        serverReports.forEach((r: SavedReportRecord) => {
+          const code = normalizeCode(r.caseCode);
+          if (!map.has(code)) {
+            map.set(code, r);
+          }
+        });
+        setReports(Array.from(map.values()));
+        return;
+      }
+    } catch (err) {
+      console.warn('Could not fetch server reports, using local reports:', err);
+    }
+
+    setReports(localReports);
   };
 
-  const handleUpdateStatus = (caseCode: string, newStatus: TrackingStatus) => {
+  const handleUpdateStatus = async (caseCode: string, newStatus: TrackingStatus) => {
     const updatedReports = reports.map(report => {
       if (report.caseCode === caseCode) {
         return { 
@@ -71,6 +156,17 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
       localStorage.setItem('act_ai_saved_reports', JSON.stringify(updatedReports));
     } catch (e) {
       console.error('Failed to save updated reports', e);
+    }
+
+    const cleanCode = normalizeCode(caseCode);
+    try {
+      await fetch(`/api/reports/${cleanCode}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+    } catch (err) {
+      console.warn('Could not update status on server:', err);
     }
   };
 
@@ -109,17 +205,32 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
     e.preventDefault();
     if (!chatMessage.trim()) return;
 
-    const newMessage = {
-      sender: 'police',
-      text: chatMessage.trim(),
-      timestamp: serverTimestamp()
-    };
-
+    const cleanCode = normalizeCode(caseCode);
+    const msgText = chatMessage.trim();
     setChatMessage('');
+
     try {
-      await addDoc(collection(db, `chats/${caseCode}/messages`), newMessage);
-    } catch (err) {
-      console.error('Error sending chat', err);
+      // Primary: Firestore real-time write (triggers onSnapshot immediately without duplicate)
+      await addDoc(collection(db, `chats/${cleanCode}/messages`), {
+        sender: 'police',
+        text: msgText,
+        timestamp: serverTimestamp(),
+      });
+    } catch (firestoreErr) {
+      console.warn('Firestore write failed in Police Dashboard, falling back to backend API:', firestoreErr);
+      try {
+        const res = await fetch(`/api/reports/${cleanCode}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sender: 'police', text: msgText }),
+        });
+        const data = await res.json();
+        if (data.success && data.message) {
+          setChatMessages(prev => deduplicateMessages([...prev, data.message]));
+        }
+      } catch (err) {
+        console.error('Backend send chat error in Police Dashboard:', err);
+      }
     }
   };
 
@@ -283,7 +394,11 @@ export const PoliceDashboard: React.FC<PoliceDashboardProps> = ({ onBack }) => {
                                 {msg.text}
                               </div>
                               <span className="text-[9px] text-slate-500 mt-0.5">
-                                {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString() : new Date().toLocaleTimeString()}
+                                {msg.timestamp?.toDate 
+                                  ? msg.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+                                  : msg.timestamp 
+                                  ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+                                  : 'Just now'}
                               </span>
                             </div>
                           ))

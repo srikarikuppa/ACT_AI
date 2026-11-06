@@ -13,8 +13,9 @@ import { Step5SendConfirm } from './components/steps/Step5SendConfirm';
 import { LandingPage } from './components/LandingPage';
 import { PoliceDashboard } from './components/PoliceDashboard';
 import { SafetyMapModal } from './components/SafetyMapModal';
-import { loginAnonymously, auth } from './utils/firebase';
+import { loginAnonymously, auth, db } from './utils/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'citizen' | 'police'>(() => {
@@ -134,6 +135,30 @@ export default function App() {
       localStorage.setItem('act_ai_saved_reports', JSON.stringify(updatedList));
     } catch (e) {
       console.warn('LocalStorage save error:', e);
+    }
+
+    // Save directly to Firebase Firestore
+    const cleanCode = reportState.caseCode.replace('#', '').trim().toUpperCase();
+    try {
+      setDoc(doc(db, 'reports', cleanCode), {
+        caseCode: cleanCode,
+        submittedAt: timestamp,
+        category: reportState.incidentCategory ? reportState.incidentCategory.toUpperCase() : 'General Safety',
+        location: `${reportState.location.village}, ${reportState.location.district}`,
+        locationDetails: reportState.location,
+        status: 'Submitted',
+        urgency: reportState.analysis?.urgencyBadge || 'Yellow - Medium',
+        summary: reportState.analysis?.summaryEnglish || reportState.transcript || 'Anonymous incident reported.',
+        targetHelpline: reportState.analysis?.targetHelpline || '112 Emergency SOS',
+        transcript: reportState.transcript || '',
+        updatedAt: serverTimestamp(),
+      }, { merge: true }).then(() => {
+        console.log(`[ACT.ai] Report ${cleanCode} stored in Firebase Firestore!`);
+      }).catch(err => {
+        console.warn('Client Firestore save error:', err);
+      });
+    } catch (e) {
+      console.warn('Error initiating client Firestore write:', e);
     }
   };
 

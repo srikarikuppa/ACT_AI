@@ -11,7 +11,7 @@ const cloudflared = spawn(command, ['-y', 'cloudflared', 'tunnel', '--url', 'htt
 
 const appJsPath = path.join(__dirname, 'mobile', 'App.js');
 
-cloudflared.stderr.on('data', (data) => {
+function handleData(data) {
   const output = data.toString();
   // Print tunnel logs to terminal
   process.stdout.write(output);
@@ -45,7 +45,10 @@ cloudflared.stderr.on('data', (data) => {
     }
     console.log(`======================================================\n\n`);
   }
-});
+}
+
+cloudflared.stdout.on('data', handleData);
+cloudflared.stderr.on('data', handleData);
 
 cloudflared.on('close', (code) => {
   console.log(`Tunnel process exited with code ${code}`);

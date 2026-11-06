@@ -33,6 +33,14 @@ export const AuthorityAnalytics: React.FC = () => {
     );
   }
 
+  const totals = {
+    Theft: data.reduce((acc, curr) => acc + (curr.theft || 0), 0),
+    Harassment: data.reduce((acc, curr) => acc + (curr.harassment || 0), 0),
+    Disputes: data.reduce((acc, curr) => acc + (curr.disputes || 0), 0),
+    Emergencies: data.reduce((acc, curr) => acc + (curr.emergencies || 0), 0),
+  };
+  const highestCrimeType = Object.entries(totals).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Theft';
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -50,7 +58,7 @@ export const AuthorityAnalytics: React.FC = () => {
             <TrendingUp className="w-5 h-5" />
             <h3 className="font-semibold">Highest Crime Type</h3>
           </div>
-          <p className="text-3xl font-bold text-slate-200">Theft</p>
+          <p className="text-3xl font-bold text-slate-200">{highestCrimeType}</p>
         </div>
         <div className="bg-[#161B22] p-4 rounded-xl border border-gray-800">
           <div className="flex items-center gap-3 text-green-400 mb-2">

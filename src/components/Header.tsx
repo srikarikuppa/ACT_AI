@@ -91,10 +91,11 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Track Case Button */}
           <button
             onClick={onOpenTrackerModal}
-            className="hidden md:flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-[#21262D] hover:bg-[#30363D] text-slate-200 text-xs sm:text-sm font-semibold border border-gray-700 transition-all shadow-md"
+            className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-2xl bg-[#21262D] hover:bg-[#30363D] text-slate-200 text-xs sm:text-sm font-semibold border border-gray-700 transition-all shadow-md"
             title="Track Report Status"
           >
-            <span className="font-mono text-blue-400">#</span> {t.trackReportStatus}
+            <span className="font-mono text-blue-400 font-bold">#</span>
+            <span className="hidden sm:inline">{t.trackReportStatus}</span>
           </button>
 
           {/* Global Voice Guidance Button */}

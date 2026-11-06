@@ -53,7 +53,11 @@ export const Step4AICheck: React.FC<Step4AICheckProps> = ({
 
         const data = await response.json();
 
-        if (isMounted && data.success && data.analysis) {
+        if (!response.ok || !data.success || !data.analysis) {
+          throw new Error(data?.error || `Server responded with ${response.status}`);
+        }
+
+        if (isMounted) {
           onAnalysisComplete(data.analysis);
           setIsLoading(false);
 

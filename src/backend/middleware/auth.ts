@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getAuth, DecodedIdToken } from 'firebase-admin/auth';
 import { initializeApp, getApps, cert, applicationDefault } from 'firebase-admin/app';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { User } from '../models/User.js';
 
 // Extend Express Request type to include user
@@ -36,6 +37,21 @@ export const initFirebaseAdmin = () => {
       console.error('Firebase Admin initialization error:', error);
     }
   }
+};
+
+let adminFirestore: Firestore | null = null;
+export const getAdminFirestore = (): Firestore | null => {
+  if (getApps().length === 0) {
+    initFirebaseAdmin();
+  }
+  if (!adminFirestore && getApps().length > 0) {
+    try {
+      adminFirestore = getFirestore();
+    } catch (e) {
+      console.warn('Could not initialize admin Firestore:', e);
+    }
+  }
+  return adminFirestore;
 };
 
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {

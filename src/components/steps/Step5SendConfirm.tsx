@@ -25,7 +25,20 @@ export const Step5SendConfirm: React.FC<Step5SendConfirmProps> = ({
   const t = TRANSLATIONS[language] || TRANSLATIONS.en;
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(reportState.caseCode);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(reportState.caseCode).catch(() => {});
+    } else {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = reportState.caseCode;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      } catch (e) {}
+    }
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };

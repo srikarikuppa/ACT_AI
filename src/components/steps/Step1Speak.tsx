@@ -105,10 +105,11 @@ export const Step1Speak: React.FC<Step1SpeakProps> = ({
       // Stop the stream immediately, we just wanted to force the permission prompt
       stream.getTracks().forEach(track => track.stop());
 
+      const existingText = transcript.trim();
       const rec = createSpeechRecognition(
         language,
         (text, isFinal) => {
-          onTranscriptChange(text);
+          onTranscriptChange(existingText ? `${existingText} ${text}` : text);
         },
         (err) => {
           setSpeechError(err);

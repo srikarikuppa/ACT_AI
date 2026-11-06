@@ -27,21 +27,74 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
   const [chatMessage, setChatMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<any[]>([]);
 
+  const normalizeCode = (code: string) => (code || '').replace('#', '').trim().toUpperCase();
+
+  const deduplicateMessages = (msgs: any[]) => {
+    const seen = new Set<string>();
+    return msgs.filter((m) => {
+      const timeKey = m.timestamp?.toDate 
+        ? m.timestamp.toDate().toISOString().slice(0, 16) 
+        : (m.timestamp ? String(m.timestamp).slice(0, 16) : '');
+      const key = m.id || `${m.sender}-${m.text.trim()}-${timeKey}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
   useEffect(() => {
-    if (searchedRecord) {
+    if (!searchedRecord) return;
+    const cleanCode = normalizeCode(searchedRecord.caseCode);
+    let firestoreActive = false;
+
+    // Backend message polling fallback
+    const fetchBackendMessages = async () => {
+      if (firestoreActive) return;
+      try {
+        const res = await fetch(`/api/reports/${cleanCode}/messages`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.messages) && !firestoreActive) {
+          setChatMessages(prev => deduplicateMessages(prev.length === 0 ? data.messages : [...prev, ...data.messages]));
+        }
+      } catch (e) {
+        console.warn('Backend message poll error:', e);
+      }
+    };
+
+    // Firestore real-time listener (primary)
+    let unsubscribe: (() => void) | null = null;
+    try {
       const q = query(
-        collection(db, `chats/${searchedRecord.caseCode}/messages`),
+        collection(db, `chats/${cleanCode}/messages`),
         orderBy('timestamp', 'asc')
       );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        firestoreActive = true;
         const msgs = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        setChatMessages(msgs);
+        setChatMessages(deduplicateMessages(msgs));
+      }, (err) => {
+        console.warn('Firestore snapshot error, falling back to backend API polling:', err);
+        firestoreActive = false;
+        fetchBackendMessages();
       });
-      return () => unsubscribe();
+    } catch (err) {
+      console.warn('Firestore listener setup error:', err);
+      fetchBackendMessages();
     }
+
+    const interval = setInterval(() => {
+      if (!firestoreActive) {
+        fetchBackendMessages();
+      }
+    }, 3000);
+
+    return () => {
+      clearInterval(interval);
+      if (unsubscribe) unsubscribe();
+    };
   }, [searchedRecord]);
 
   if (!isOpen) return null;
@@ -72,22 +125,46 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
         const r = data.report;
         setSearchedRecord({
           caseCode: r.caseCode,
-          submittedAt: new Date(r.createdAt).toLocaleDateString(),
+          submittedAt: new Date(r.createdAt || Date.now()).toLocaleDateString(),
           category: r.incidentCategory,
           location: r.location?.village || r.location?.district || 'Unknown Location',
           status: r.status || 'Submitted',
           urgency: r.analysis?.urgencyBadge || 'Medium',
           summary: r.analysis?.summaryEnglish || 'Report filed anonymously.',
           targetHelpline: r.analysis?.targetHelpline || '112',
-          messages: []
+          messages: r.messages || []
         });
+        if (Array.isArray(r.messages) && r.messages.length > 0) {
+          setChatMessages(r.messages);
+        }
       } else {
-        setSearchError(t.noCaseFound);
-        setSearchedRecord(null);
+        // Fallback to local savedReports
+        const localMatch = savedReports.find(
+          r => normalizeCode(r.caseCode) === normalizeCode(cleanCode)
+        );
+        if (localMatch) {
+          setSearchedRecord({
+            ...localMatch,
+            caseCode: normalizeCode(localMatch.caseCode)
+          });
+        } else {
+          setSearchError(t.noCaseFound);
+          setSearchedRecord(null);
+        }
       }
     } catch (error) {
-      setSearchError('Server error checking case status.');
-      setSearchedRecord(null);
+      const localMatch = savedReports.find(
+        r => normalizeCode(r.caseCode) === normalizeCode(cleanCode)
+      );
+      if (localMatch) {
+        setSearchedRecord({
+          ...localMatch,
+          caseCode: normalizeCode(localMatch.caseCode)
+        });
+      } else {
+        setSearchError('Server error checking case status.');
+        setSearchedRecord(null);
+      }
     }
   };
 
@@ -102,17 +179,32 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
     e.preventDefault();
     if (!chatMessage.trim() || !searchedRecord) return;
 
-    const newMessage = {
-      sender: 'citizen',
-      text: chatMessage.trim(),
-      timestamp: serverTimestamp(),
-    };
-
+    const cleanCode = normalizeCode(searchedRecord.caseCode);
+    const msgText = chatMessage.trim();
     setChatMessage('');
+
     try {
-      await addDoc(collection(db, `chats/${searchedRecord.caseCode}/messages`), newMessage);
-    } catch (err) {
-      console.error('Failed to send chat', err);
+      // Primary: Firestore real-time write (triggers onSnapshot immediately without duplicate)
+      await addDoc(collection(db, `chats/${cleanCode}/messages`), {
+        sender: 'citizen',
+        text: msgText,
+        timestamp: serverTimestamp(),
+      });
+    } catch (firestoreErr) {
+      console.warn('Firestore write failed, falling back to backend API:', firestoreErr);
+      try {
+        const res = await fetch(`/api/reports/${cleanCode}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sender: 'citizen', text: msgText }),
+        });
+        const data = await res.json();
+        if (data.success && data.message) {
+          setChatMessages(prev => deduplicateMessages([...prev, data.message]));
+        }
+      } catch (err) {
+        console.error('Backend send chat error:', err);
+      }
     }
   };
 
@@ -286,7 +378,11 @@ export const CaseTrackerModal: React.FC<CaseTrackerModalProps> = ({
                           }`}>
                             <p className="text-sm">{msg.text}</p>
                             <span className="text-[10px] opacity-70 block mt-1">
-                              {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString() : new Date().toLocaleTimeString()}
+                              {msg.timestamp?.toDate 
+                                ? msg.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+                                : msg.timestamp 
+                                ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+                                : 'Just now'}
                             </span>
                           </div>
                         </div>
